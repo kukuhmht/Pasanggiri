@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Tema Sunda — Pasanggiri */
+@theme {
+  --color-hijau-tua: #1B4332;
+  --color-hijau-sedang: #2D6A4F;
+  --color-emas: #B8860B;
+  --color-emas-terang: #D4A843;
+  --color-krem: #FFF8F0;
+  --color-putih-gading: #FEFCF3;
+  --color-coklat: #5C4033;
+  --color-merah-error: #C0392B;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-krem);
+  color: #1a2a25;
+}
+
+h1, h2, h3 {
+  font-family: 'Cinzel', serif;
+}
