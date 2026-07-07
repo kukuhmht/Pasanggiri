@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { getPusherClient } from '@/lib/pusher/client'
 
@@ -29,8 +29,9 @@ export default function DaftarPage() {
   const [tab, setTab] = useState<'live' | 'form' | 'list' | 'deleted' | 'logs'>('live')
   
   // Live state
-  const [gelanggangList, setGelanggangList] = useState<{ id: string; nama: string; peserta_aktif: { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[] } | null }[]>([])
+  const [gelanggangList, setGelanggangList] = useState<{ id: string; nama: string; peserta_aktif: { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[]; kontingen: { nama: string } | null } | null }[]>([])
   const [rekapLive, setRekapLive] = useState<RekapRow[]>([])
+  const [gelanggangTimers, setGelanggangTimers] = useState<Record<string, number>>({})
 
   // Form state
   const [form, setForm] = useState({ kategori: '', golongan: '', kontingen_id: '', anggota: [''] })
@@ -65,12 +66,17 @@ export default function DaftarPage() {
         const idx = prev.findIndex(g => g.id === data.gelanggang_id)
         if (idx >= 0) {
           const newArr = [...prev]
-          newArr[idx] = { id: data.gelanggang_id, nama: data.gelanggang_nama, peserta_aktif: data.peserta_aktif }
+          newArr[idx] = { ...newArr[idx], nama: data.gelanggang_nama, peserta_aktif: data.peserta_aktif }
           return newArr
         }
         return [...prev, { id: data.gelanggang_id, nama: data.gelanggang_nama, peserta_aktif: data.peserta_aktif }]
       })
     })
+
+    channel.bind('waktu-tampil-update', (data: { gelanggang_id: string; peserta_id: string; waktu_detik: number }) => {
+      setGelanggangTimers(prev => ({ ...prev, [data.gelanggang_id]: data.waktu_detik }))
+    })
+
     channel.bind('nilai-update', (data: { action: string; peserta_id: string; penilaian: { peserta_id: string; posisi_juri: string; total: number }; nilai_akhir: number }) => {
       const { peserta_id, penilaian, nilai_akhir } = data
       setRekapLive(prev => {
@@ -84,6 +90,7 @@ export default function DaftarPage() {
         return [...prev, { peserta_id, no_urut: '', jumlah_juri: 1, nilai_akhir, scores: [{ posisi_juri: penilaian.posisi_juri, total: penilaian.total }] }]
       })
     })
+
     return () => { channel.unbind_all(); pusher.unsubscribe(`event-${eventId}`) }
   }, [eventId])
 
@@ -270,7 +277,7 @@ export default function DaftarPage() {
 
       {/* Tab: Live */}
       {tab === 'live' && (
-        <LiveDisplay gelanggang={gelanggangList} rekap={rekapLive} />
+        <LiveDisplay gelanggang={gelanggangList} rekap={rekapLive} timers={gelanggangTimers} />
       )}
       
       {/* Tab: Form */}
@@ -627,9 +634,9 @@ export default function DaftarPage() {
   )
 }
 
-type LiveGelanggang = { id: string; nama: string; peserta_aktif: { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[] } | null }
+type LiveGelanggang = { id: string; nama: string; peserta_aktif: { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[]; kontingen: { nama: string } | null } | null }
 
-function LiveDisplay({ gelanggang, rekap }: { gelanggang: LiveGelanggang[]; rekap: RekapRow[] }) {
+function LiveDisplay({ gelanggang, rekap, timers }: { gelanggang: LiveGelanggang[]; rekap: RekapRow[]; timers: Record<string, number> }) {
   if (gelanggang.length === 0) {
     return (
       <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-8 text-center shadow">
@@ -640,6 +647,7 @@ function LiveDisplay({ gelanggang, rekap }: { gelanggang: LiveGelanggang[]; reka
   }
 
   const liveScores = rekap.filter(r => gelanggang.some(g => g.peserta_aktif?.id === r.peserta_id))
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
   return (
     <div className="space-y-6">
@@ -652,13 +660,20 @@ function LiveDisplay({ gelanggang, rekap }: { gelanggang: LiveGelanggang[]; reka
             <div className="mx-5 mb-4 rounded-xl bg-gradient-to-br from-hijau-tua to-hijau-sedang p-4 text-putih-gading">
               <div className="flex justify-between items-center mb-2">
                 <div className="text-[10px] font-bold text-emas-terang uppercase">▶ Sedang Tampil</div>
-                <div className="font-mono text-xl font-bold text-green-300">
-                  {liveScores.find(s => s.peserta_id === g.peserta_aktif!.id)?.nilai_akhir || '...'}
-                </div>
+                <div className="font-mono text-2xl font-bold text-emas-terang">{formatTime(timers[g.id] || 0)}</div>
               </div>
               <div className="text-lg font-bold">{(g.peserta_aktif.anggota || []).join(', ')}</div>
-              <div className="text-xs opacity-80 mt-0.5">
-                {g.peserta_aktif.no_urut} · {g.peserta_aktif.kategori} · {g.peserta_aktif.golongan}
+              <div className="text-xs opacity-80 mt-0.5">No Urut: {g.peserta_aktif.no_urut}</div>
+              <div className="text-xs opacity-80">{g.peserta_aktif.kontingen?.nama || "-"} | {g.peserta_aktif.kategori} | {g.peserta_aktif.golongan}</div>
+              
+              <div className="mt-4 pt-3 border-t border-white/20">
+                <div className="text-[10px] text-emas-terang uppercase mb-1">Nilai Akhir</div>
+                <div className="text-3xl font-bold text-green-300">
+                  {liveScores.find(s => s.peserta_id === g.peserta_aktif!.id)?.nilai_akhir || '0'}
+                </div>
+                <div className="text-xs text-white/60 mt-1">
+                  Juri: {liveScores.find(s => s.peserta_id === g.peserta_aktif!.id)?.jumlah_juri || 0}/5
+                </div>
               </div>
             </div>
           ) : (

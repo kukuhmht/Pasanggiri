@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { getPusherClient } from '@/lib/pusher/client'
 
@@ -47,6 +47,8 @@ export default function JuriPage() {
   // Gelanggang state
   const [gelanggangList, setGelanggangList] = useState<{ id: string; nama: string; peserta_aktif: Peserta | null }[]>([])
   const [selectedGel, setSelectedGel] = useState('')
+  const selectedGelRef = useRef(selectedGel)
+  useEffect(() => { selectedGelRef.current = selectedGel }, [selectedGel])
 
   // Scoring state
   const [pesertaAktif, setPesertaAktif] = useState<Peserta | null>(null)
@@ -104,7 +106,7 @@ export default function JuriPage() {
     })
 
     channel.bind('waktu-tampil-update', (data: { gelanggang_id: string; peserta_id: string; waktu_detik: number }) => {
-      if (selectedGel === data.gelanggang_id) {
+      if (selectedGelRef.current === data.gelanggang_id) {
         const menit = Math.floor(data.waktu_detik / 60)
         const detik = data.waktu_detik % 60
         setWaktuMenit(String(menit))
