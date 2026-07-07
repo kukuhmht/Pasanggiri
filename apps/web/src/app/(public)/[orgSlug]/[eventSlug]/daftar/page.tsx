@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { getPusherClient } from '@/lib/pusher/client'
 
 const KATEGORI = [
   { nama: 'PERORANGAN', min: 1, max: 1 },
@@ -15,6 +16,7 @@ const GOLONGAN = ['Usia Dini', 'Pra Remaja', 'Remaja', 'Dewasa', 'Pembina', 'Ist
 type Kontingen = { id: string; nama: string; kode: string }
 type Peserta = { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[]; kontingen: { nama: string; kode: string } | null; kontingen_id: string }
 type AuditLog = { id: string; action: string; entity_id: string; old_data: Record<string, unknown> | null; new_data: Record<string, unknown> | null; actor_name: string; actor_phone: string; created_at: string }
+type RekapRow = { peserta_id: string; no_urut: string; jumlah_juri: number; nilai_akhir: number; scores: { posisi_juri: string; total: number }[] }
 
 export default function DaftarPage() {
   const { orgSlug, eventSlug } = useParams()
@@ -24,7 +26,11 @@ export default function DaftarPage() {
   const [deletedList, setDeletedList] = useState<Peserta[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'form' | 'list' | 'deleted' | 'logs'>('form')
+  const [tab, setTab] = useState<'live' | 'form' | 'list' | 'deleted' | 'logs'>('live')
+  
+  // Live state
+  const [gelanggangList, setGelanggangList] = useState<{ id: string; nama: string; peserta_aktif: { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[] } | null }[]>([])
+  const [rekapLive, setRekapLive] = useState<RekapRow[]>([])
 
   // Form state
   const [form, setForm] = useState({ kategori: '', golongan: '', kontingen_id: '', anggota: [''] })
@@ -49,13 +55,51 @@ export default function DaftarPage() {
 
   useEffect(() => { resolveEvent() }, [])
 
+  useEffect(() => {
+    if (!eventId) return
+    const pusher = getPusherClient()
+    if (!pusher) return
+    const channel = pusher.subscribe(`event-${eventId}`)
+    channel.bind('gelanggang-update', (data: { gelanggang_id: string; gelanggang_nama: string; peserta_aktif: Peserta | null }) => {
+      setGelanggangList(prev => {
+        const idx = prev.findIndex(g => g.id === data.gelanggang_id)
+        if (idx >= 0) {
+          const newArr = [...prev]
+          newArr[idx] = { id: data.gelanggang_id, nama: data.gelanggang_nama, peserta_aktif: data.peserta_aktif }
+          return newArr
+        }
+        return [...prev, { id: data.gelanggang_id, nama: data.gelanggang_nama, peserta_aktif: data.peserta_aktif }]
+      })
+    })
+    channel.bind('nilai-update', (data: { action: string; peserta_id: string; penilaian: { peserta_id: string; posisi_juri: string; total: number }; nilai_akhir: number }) => {
+      const { peserta_id, penilaian, nilai_akhir } = data
+      setRekapLive(prev => {
+        const idx = prev.findIndex(r => r.peserta_id === peserta_id)
+        if (idx >= 0) {
+          const newArr = [...prev]
+          const scores = [...newArr[idx].scores.filter(s => s.posisi_juri !== penilaian.posisi_juri), { posisi_juri: penilaian.posisi_juri, total: penilaian.total }]
+          newArr[idx] = { ...newArr[idx], scores, jumlah_juri: scores.length, nilai_akhir }
+          return newArr
+        }
+        return [...prev, { peserta_id, no_urut: '', jumlah_juri: 1, nilai_akhir, scores: [{ posisi_juri: penilaian.posisi_juri, total: penilaian.total }] }]
+      })
+    })
+    return () => { channel.unbind_all(); pusher.unsubscribe(`event-${eventId}`) }
+  }, [eventId])
+
   async function resolveEvent() {
     const res = await fetch(`/api/public/${orgSlug}/${eventSlug}`)
     if (!res.ok) { setLoading(false); return }
     const { event } = await res.json()
     setEventId(event.id)
-    await loadData(event.id)
+    await Promise.all([loadData(event.id), loadGelanggang(event.id)])
     setLoading(false)
+  }
+
+  async function loadGelanggang(eid: string) {
+    const res = await fetch(`/api/events/${eid}/gelanggang`)
+    const { data } = await res.json()
+    setGelanggangList(data || [])
   }
 
   async function loadData(eid?: string) {
@@ -208,13 +252,14 @@ export default function DaftarPage() {
     <div className="space-y-4">
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {(['form', 'list', 'deleted', 'logs'] as const).map(t => (
+        {(['live', 'form', 'list', 'deleted', 'logs'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`flex-1 min-w-[120px] rounded-lg py-2.5 text-sm font-bold transition ${
               tab === t
                 ? 'bg-hijau-tua text-emas-terang shadow'
                 : 'bg-white text-coklat border-2 border-gray-200 hover:border-emas'
             }`}>
+            {t === 'live' && '🔴 Live'}
             {t === 'form' && '📝 Pendaftaran'}
             {t === 'list' && `📋 Peserta (${pesertaList.length})`}
             {t === 'deleted' && `🗑️ Terhapus (${deletedList.length})`}
@@ -223,6 +268,11 @@ export default function DaftarPage() {
         ))}
       </div>
 
+      {/* Tab: Live */}
+      {tab === 'live' && (
+        <LiveDisplay gelanggang={gelanggangList} rekap={rekapLive} />
+      )}
+      
       {/* Tab: Form */}
       {tab === 'form' && (
         <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-6 shadow">
@@ -573,6 +623,51 @@ export default function DaftarPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+type LiveGelanggang = { id: string; nama: string; peserta_aktif: { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[] } | null }
+
+function LiveDisplay({ gelanggang, rekap }: { gelanggang: LiveGelanggang[]; rekap: RekapRow[] }) {
+  if (gelanggang.length === 0) {
+    return (
+      <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-8 text-center shadow">
+        <h2 className="font-[family-name:var(--font-cinzel)] text-xl font-bold text-hijau-tua mb-2">🔴 Live Gelanggang</h2>
+        <p className="text-coklat">Belum ada gelanggang yang dibuka oleh admin.</p>
+      </div>
+    )
+  }
+
+  const liveScores = rekap.filter(r => gelanggang.some(g => g.peserta_aktif?.id === r.peserta_id))
+
+  return (
+    <div className="space-y-6">
+      {gelanggang.map(g => (
+        <div key={g.id} className="rounded-xl border-l-4 border-emas bg-putih-gading shadow">
+          <div className="px-5 pt-4 pb-2">
+            <h3 className="font-[family-name:var(--font-cinzel)] text-base font-bold text-hijau-tua uppercase">{g.nama}</h3>
+          </div>
+          {g.peserta_aktif ? (
+            <div className="mx-5 mb-4 rounded-xl bg-gradient-to-br from-hijau-tua to-hijau-sedang p-4 text-putih-gading">
+              <div className="flex justify-between items-center mb-2">
+                <div className="text-[10px] font-bold text-emas-terang uppercase">▶ Sedang Tampil</div>
+                <div className="font-mono text-xl font-bold text-green-300">
+                  {liveScores.find(s => s.peserta_id === g.peserta_aktif!.id)?.nilai_akhir || '...'}
+                </div>
+              </div>
+              <div className="text-lg font-bold">{(g.peserta_aktif.anggota || []).join(', ')}</div>
+              <div className="text-xs opacity-80 mt-0.5">
+                {g.peserta_aktif.no_urut} · {g.peserta_aktif.kategori} · {g.peserta_aktif.golongan}
+              </div>
+            </div>
+          ) : (
+            <div className="mx-5 mb-4 rounded-xl border-2 border-dashed border-gray-300 p-4 text-center">
+              <p className="text-sm text-gray-400">Tidak ada peserta tampil</p>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   )
 }

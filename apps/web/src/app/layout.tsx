@@ -10,6 +10,10 @@ export const metadata: Metadata = {
   title: 'Pasanggiri — Sistem Penilaian Pencak Silat',
   description: 'Platform SaaS untuk pendaftaran dan penilaian Pasanggiri Pencak Silat Persinas ASAD',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/icon-192.png',
+  }
 }
 
 export const viewport = {

@@ -20,7 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .from('gelanggang')
       .update(updates)
       .eq('id', gid)
-      .select('*, peserta_aktif:peserta_aktif_id(*)')
+      .select('*, peserta_aktif:peserta_aktif_id(id, no_urut, kategori, golongan, anggota, kontingen(nama, kode))')
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     await triggerGelanggangUpdate(eventId, {

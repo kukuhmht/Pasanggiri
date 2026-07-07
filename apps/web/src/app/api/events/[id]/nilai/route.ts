@@ -1,5 +1,5 @@
 import { getAdminClient } from '@/lib/auth'
-import { computeTotal } from '@pasanggiri/scoring'
+import { computeTotal, nilaiAkhir } from '@pasanggiri/scoring'
 import { triggerNilaiUpdate } from '@/lib/pusher/server'
 import { NextResponse } from 'next/server'
 
@@ -72,7 +72,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   // Trigger Pusher realtime update for rekap
-  triggerNilaiUpdate(eventId, { action: 'add', penilaian: data }).catch(() => {})
+  const { data: allScores } = await db.from('penilaian').select('total').eq('peserta_id', peserta_id)
+  const nilai_akhir = nilaiAkhir((allScores || []).map(s => Number(s.total)))
+  
+  triggerNilaiUpdate(eventId, { 
+    action: 'add', 
+    peserta_id, 
+    penilaian: { peserta_id: data.peserta_id, posisi_juri: data.posisi_juri, total: data.total },
+    nilai_akhir: nilai_akhir.nilaiAkhir 
+  }).catch(() => {})
 
   return NextResponse.json({ data, score }, { status: 201 })
 }
