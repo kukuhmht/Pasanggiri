@@ -3,10 +3,15 @@ import { NextResponse } from 'next/server'
 
 // PATCH /api/events/:id/peserta/:pid
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; pid: string }> }) {
+  const ctx = await getAuthContext()
   const body = await request.json()
-  const { actor_name, actor_phone, ...updates } = body
-  
-  if (!actor_name || !actor_phone || !actor_phone.startsWith('62')) {
+  let { actor_name, actor_phone, ...updates } = body
+
+  if (ctx) {
+    // Admin sudah terautentikasi, tidak perlu konfirmasi identitas
+    actor_name = ctx.user.email || 'Admin'
+    actor_phone = '-'
+  } else if (!actor_name || !actor_phone || !actor_phone.startsWith('62')) {
     return NextResponse.json({ error: 'Nama dan WhatsApp (awalan 62) wajib diisi.' }, { status: 400 })
   }
 
@@ -43,8 +48,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
 // DELETE /api/events/:id/peserta/:pid
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string; pid: string }> }) {
-  const { actor_name, actor_phone } = await request.json()
-  if (!actor_name || !actor_phone || !actor_phone.startsWith('62')) {
+  const ctx = await getAuthContext()
+  let { actor_name, actor_phone } = await request.json()
+
+  if (ctx) {
+    actor_name = ctx.user.email || 'Admin'
+    actor_phone = '-'
+  } else if (!actor_name || !actor_phone || !actor_phone.startsWith('62')) {
     return NextResponse.json({ error: 'Nama dan WhatsApp (awalan 62) wajib diisi.' }, { status: 400 })
   }
 

@@ -1,8 +1,0 @@
-{
-  "name": "pasanggiri-asad",
-  "version": "3.0.0",
-  "private": true,
-  "dependencies": {
-    "pusher": "5.2.0"
-  }
-}
