@@ -75,12 +75,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { data: allScores } = await db.from('penilaian').select('total').eq('peserta_id', peserta_id)
   const nilai_akhir = nilaiAkhir((allScores || []).map(s => Number(s.total)))
   
-  triggerNilaiUpdate(eventId, { 
-    action: 'add', 
-    peserta_id, 
-    penilaian: { peserta_id: data.peserta_id, posisi_juri: data.posisi_juri, total: data.total },
-    nilai_akhir: nilai_akhir.nilaiAkhir 
-  }).catch(() => {})
+  try {
+    await triggerNilaiUpdate(eventId, { 
+      action: 'add', 
+      peserta_id, 
+      penilaian: { peserta_id: data.peserta_id, posisi_juri: data.posisi_juri, total: data.total },
+      nilai_akhir: nilai_akhir.nilaiAkhir 
+    })
+  } catch {}  // Pusher failure should not block response to Jurii
 
   return NextResponse.json({ data, score }, { status: 201 })
 }

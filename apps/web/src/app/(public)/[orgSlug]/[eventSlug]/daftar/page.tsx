@@ -16,7 +16,7 @@ const GOLONGAN = ['Usia Dini', 'Pra Remaja', 'Remaja', 'Dewasa', 'Pembina', 'Ist
 type Kontingen = { id: string; nama: string; kode: string }
 type Peserta = { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[]; kontingen: { nama: string; kode: string } | null; kontingen_id: string }
 type AuditLog = { id: string; action: string; entity_id: string; old_data: Record<string, unknown> | null; new_data: Record<string, unknown> | null; actor_name: string; actor_phone: string; created_at: string }
-type RekapRow = { peserta_id: string; no_urut: string; jumlah_juri: number; nilai_akhir: number; scores: { posisi_juri: string; total: number }[] }
+type RekapRow = { peserta_id: string; jumlah_juri: number; nilai_akhir: number }
 
 export default function DaftarPage() {
   const { orgSlug, eventSlug } = useParams()
@@ -77,22 +77,20 @@ export default function DaftarPage() {
       setGelanggangTimers(prev => ({ ...prev, [data.gelanggang_id]: data.waktu_detik }))
     })
 
-    channel.bind('nilai-update', (data: { action: string; peserta_id: string; penilaian: { peserta_id: string; posisi_juri: string; total: number }; nilai_akhir: number }) => {
-      const { peserta_id, penilaian, nilai_akhir } = data
-      setRekapLive(prev => {
-        const idx = prev.findIndex(r => r.peserta_id === peserta_id)
-        if (idx >= 0) {
-          const newArr = [...prev]
-          const scores = [...newArr[idx].scores.filter(s => s.posisi_juri !== penilaian.posisi_juri), { posisi_juri: penilaian.posisi_juri, total: penilaian.total }]
-          newArr[idx] = { ...newArr[idx], scores, jumlah_juri: scores.length, nilai_akhir }
-          return newArr
-        }
-        return [...prev, { peserta_id, no_urut: '', jumlah_juri: 1, nilai_akhir, scores: [{ posisi_juri: penilaian.posisi_juri, total: penilaian.total }] }]
-      })
-    })
-
     return () => { channel.unbind_all(); pusher.unsubscribe(`event-${eventId}`) }
   }, [eventId])
+
+  useEffect(() => {
+    if (tab !== 'live' || !eventId) return
+    async function fetchRekap() {
+      const res = await fetch(`/api/events/${eventId}/rekap`)
+      const { data } = await res.json()
+      setRekapLive((data || []).map((r: any) => ({ peserta_id: r.peserta_id, jumlah_juri: r.jumlah_juri, nilai_akhir: r.nilai_akhir })))
+    }
+    fetchRekap()
+    const interval = setInterval(fetchRekap, 5000)
+    return () => clearInterval(interval)
+  }, [tab, eventId])
 
   async function resolveEvent() {
     const res = await fetch(`/api/public/${orgSlug}/${eventSlug}`)
