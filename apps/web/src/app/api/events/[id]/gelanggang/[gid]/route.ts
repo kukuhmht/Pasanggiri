@@ -27,6 +27,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       gelanggang_id: gelanggang.id,
       gelanggang_nama: gelanggang.nama,
       peserta_aktif: gelanggang.peserta_aktif,
+      antrian: gelanggang.antrian || [],
     })
   }
 

@@ -18,8 +18,15 @@ export default function GelanggangPage() {
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => { loadAll() }, [])
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(t)
+  }, [toast])
 
   async function loadAll() {
     setLoading(true)
@@ -73,10 +80,16 @@ export default function GelanggangPage() {
 
   // Kirim waktu tampil ke juri (via Pusher, not DB)
   async function kirimWaktu(gid: string, waktu_detik: number) {
-    await fetch(`/api/events/${eventId}/gelanggang/${gid}`, {
+    const res = await fetch(`/api/events/${eventId}/gelanggang/${gid}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ waktu_detik })
     })
+    if (res.ok) {
+      setToast({ message: `Waktu ${waktu_detik} detik berhasil dikirim ke Juri!`, type: 'success' })
+    } else {
+      const { error } = await res.json()
+      setToast({ message: `Gagal mengirim waktu: ${error}`, type: 'error' })
+    }
   }
 
   // Tampilkan berikutnya: ambil pertama dari antrian → jadi aktif
@@ -127,6 +140,14 @@ export default function GelanggangPage() {
 
   return (
     <div className="space-y-6">
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-5 left-1/2 -translate-x-1/2 rounded-lg px-4 py-3 text-sm font-bold text-white shadow-lg ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          {toast.message}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href={`/app/events/${eventId}`} className="text-sm text-coklat hover:underline">← Detail Event</Link>
@@ -202,6 +223,13 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
+  const hasAlertedRef = useRef(false)
+
+  function playGong() {
+    try {
+      new Audio('/sounds/gongfx.mp3').play()
+    } catch {}
+  }
 
   useEffect(() => {
     if (isActive) {
@@ -211,6 +239,24 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [isActive])
+
+  // Reset alert flag & timer when active peserta changes
+  useEffect(() => {
+    hasAlertedRef.current = false
+    setTimer(0)
+    setIsActive(false)
+  }, [gel.peserta_aktif?.id])
+
+  // Play gong when timer reaches category time limit
+  useEffect(() => {
+    if (!isActive || !gel.peserta_aktif || hasAlertedRef.current) return
+    const kategori = gel.peserta_aktif.kategori
+    const batas = kategori === 'BERPASANGAN' ? 120 : kategori === 'ATT' ? 300 : 180
+    if (timer === batas) {
+      hasAlertedRef.current = true
+      playGong()
+    }
+  }, [timer, isActive, gel.peserta_aktif?.kategori])
 
   // Keyboard shortcut: Space to start/pause
   useEffect(() => {

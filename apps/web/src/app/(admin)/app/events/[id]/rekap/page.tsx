@@ -44,6 +44,9 @@ export default function RekapPage() {
   const [filterGolongan, setFilterGolongan] = useState('')
   const [saving, setSaving] = useState<string | null>(null)
   const debounceRef = useRef<Record<string, NodeJS.Timeout>>({})
+  const rowsRef = useRef<NilaiRow[]>([])
+
+  useEffect(() => { rowsRef.current = rows }, [rows])
 
   useEffect(() => { loadData() }, [])
 
@@ -110,12 +113,11 @@ export default function RekapPage() {
   }
 
   async function saveRow(rowId: string) {
-    const row = rows.find(r => r.id === rowId)
-    if (!row) return
+    // Use ref to get latest local state (avoid stale closure from debounce timeout)
+    const current = rowsRef.current.find(r => r.id === rowId)
+    if (!current) return
     setSaving(rowId)
 
-    // Find latest local state
-    const current = rows.find(r => r.id === rowId)!
     await fetch(`/api/events/${eventId}/nilai/${rowId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
