@@ -49,7 +49,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 // DELETE /api/events/:id/peserta/:pid
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string; pid: string }> }) {
   const ctx = await getAuthContext()
-  let { actor_name, actor_phone } = await request.json()
+  let actor_name, actor_phone
+  try {
+    const body = await request.json()
+    actor_name = body.actor_name
+    actor_phone = body.actor_phone
+  } catch {
+    // If body empty, assume admin
+  }
 
   if (ctx) {
     actor_name = ctx.user.email || 'Admin'
@@ -61,7 +68,17 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { id: eventId, pid } = await params
   const db = getAdminClient()
 
-  // 1. Get current data for logging
+  // 1. Check for existing penilaian
+  const { count, error: countError } = await db.from('penilaian').select('*', { count: 'exact', head: true }).eq('peserta_id', pid)
+  if (countError) return NextResponse.json({ error: countError.message }, { status: 500 })
+  if (count && count > 0) {
+    return NextResponse.json({
+      error: `Peserta sudah memiliki ${count} penilaian. Hapus nilai terlebih dahulu.`,
+      code: 'HAS_PENILAIAN'
+    }, { status: 409 })
+  }
+
+  // 2. Get current data for logging
   const { data: oldData, error: fetchError } = await db.from('peserta').select('*').eq('id', pid).single()
   if (fetchError || !oldData) return NextResponse.json({ error: 'Peserta tidak ditemukan' }, { status: 404 })
 
