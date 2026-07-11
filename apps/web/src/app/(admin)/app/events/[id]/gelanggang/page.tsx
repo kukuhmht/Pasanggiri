@@ -311,6 +311,19 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  // Warn user before leaving page if timer is active
+  useEffect(() => {
+    if (!isActive) return
+
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isActive])
+
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60)
     const ss = s % 60
@@ -513,9 +526,14 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
                   )}
                   <span className="text-gray-400 text-sm select-none">⠿</span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-gray-800 truncate block">
-                      {p ? `${(p.anggota || []).join(', ')} — ${p.kontingen?.nama || '-'} · ${p.golongan}` : pid}
-                    </span>
+                    <div className="text-sm font-medium text-gray-800 truncate">
+                      {p ? (p.anggota || []).join(', ') : pid}
+                    </div>
+                    {p && (
+                      <div className="text-xs text-gray-500 truncate mt-0.5">
+                        {p.kontingen?.nama || '-'} · {p.kategori} · {p.golongan}
+                      </div>
+                    )}
                   </div>
                   <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">{p?.no_urut || ''}</span>
                   <button onClick={() => handleRemoveItem(idx)} className="text-red-400 hover:text-red-600 text-sm ml-1 flex-shrink-0">🗑️</button>

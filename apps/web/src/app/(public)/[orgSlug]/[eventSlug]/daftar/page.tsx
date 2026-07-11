@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Spinner } from '@/components/spinner'
@@ -48,6 +48,7 @@ export default function DaftarPage() {
   const [filterKontingen, setFilterKontingen] = useState('')
   const [filterKategori, setFilterKategori] = useState('')
   const [filterGolongan, setFilterGolongan] = useState('')
+  const [search, setSearch] = useState('')
 
   useEffect(() => { resolveEvent() }, [])
 
@@ -200,14 +201,60 @@ export default function DaftarPage() {
   const filteredPeserta = pesertaList.filter(p =>
     (!filterKontingen || p.kontingen_id === filterKontingen) &&
     (!filterKategori || p.kategori === filterKategori) &&
-    (!filterGolongan || p.golongan === filterGolongan)
+    (!filterGolongan || p.golongan === filterGolongan) &&
+    (!search || (() => {
+      const q = search.toLowerCase()
+      return p.no_urut.toLowerCase().includes(q) ||
+        (p.anggota || []).some(a => a.toLowerCase().includes(q)) ||
+        p.kontingen?.nama?.toLowerCase().includes(q)
+    })())
   )
+
+  const stats = useMemo(() => {
+    const byKat: Record<string, number> = {}
+    const byGol: Record<string, number> = {}
+    filteredPeserta.forEach(p => {
+      byKat[p.kategori] = (byKat[p.kategori] || 0) + 1
+      byGol[p.golongan] = (byGol[p.golongan] || 0) + 1
+    })
+    return { byKat, byGol }
+  }, [filteredPeserta])
 
   if (loading) return <div className="flex items-center justify-center py-12 gap-2 text-coklat"><Spinner className="h-5 w-5" /> Memuat data event...</div>
   if (!eventId) return <div className="py-12 text-center text-merah-error">Event tidak ditemukan atau tidak publik.</div>
 
   return (
     <div className="space-y-4">
+      {/* Statistik */}
+      <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-4 shadow">
+        <div className="text-xs font-bold text-coklat mb-2">📊 Statistik Peserta</div>
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {KATEGORI.map(k => {
+              const count = stats.byKat[k.nama] || 0
+              if (count === 0) return null
+              return (
+                <span key={k.nama} className="rounded bg-hijau-tua/10 px-2 py-1 text-xs font-bold text-hijau-tua">
+                  {k.nama} {count}
+                </span>
+              )
+            })}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {GOLONGAN.map(g => {
+              const count = stats.byGol[g] || 0
+              if (count === 0) return null
+              return (
+                <span key={g} className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                  {g} {count}
+                </span>
+              )
+            })}
+          </div>
+          <div className="text-xs font-semibold text-hijau-tua">Total: {filteredPeserta.length} peserta</div>
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
         {(['form', 'list', 'deleted', 'logs'] as const).map(t => (
@@ -303,6 +350,12 @@ export default function DaftarPage() {
               Daftar Peserta
             </h2>
             <button onClick={() => loadData()} className="rounded bg-gray-100 px-3 py-1 text-xs font-bold hover:bg-gray-200">↻</button>
+          </div>
+
+          <div className="mb-4">
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm focus:border-emas focus:outline-none"
+              placeholder="🔍 Cari no. urut, nama peserta, atau kontingen..." />
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
