@@ -38,9 +38,6 @@ export default function HasilPage() {
     setLoading(false)
   }
 
-  if (loading) return <div className="py-12 text-center text-coklat">Memuat hasil...</div>
-  if (!eventId) return <div className="py-12 text-center text-merah-error">Event tidak ditemukan.</div>
-
   // Group by kategori+golongan
   const filtered = rekap.filter(r =>
     (!filterKategori || r.kategori === filterKategori) &&
@@ -54,8 +51,19 @@ export default function HasilPage() {
     )
     const total = pesertaTerfilter.length
     const sudah = filtered.length
-    return { total, sudah, belum: total - sudah }
+
+    const byKat: Record<string, number> = {}
+    const byGol: Record<string, number> = {}
+    filtered.forEach(r => {
+      byKat[r.kategori] = (byKat[r.kategori] || 0) + 1
+      byGol[r.golongan] = (byGol[r.golongan] || 0) + 1
+    })
+
+    return { total, sudah, belum: total - sudah, byKat, byGol }
   }, [allPeserta, filtered, filterKategori, filterGolongan])
+
+  if (loading) return <div className="py-12 text-center text-coklat">Memuat hasil...</div>
+  if (!eventId) return <div className="py-12 text-center text-merah-error">Event tidak ditemukan.</div>
 
   const groups: Record<string, RekapRow[]> = {}
   filtered.forEach(r => {
@@ -121,6 +129,20 @@ export default function HasilPage() {
               <div className="font-[family-name:var(--font-cinzel)] text-2xl font-bold text-gray-400">{stats.belum}</div>
               <div className="text-[10px] text-coklat">Belum Dinilai</div>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5 justify-center mb-2">
+            {['PERORANGAN', 'BERPASANGAN', 'BERKELOMPOK', 'MASSAL', 'ATT'].map(k => {
+              const count = stats.byKat[k] || 0
+              if (count === 0) return null
+              return <span key={k} className="rounded bg-hijau-tua/10 px-2 py-1 text-xs font-bold text-hijau-tua">{k} {count}</span>
+            })}
+          </div>
+          <div className="flex flex-wrap gap-1.5 justify-center mb-3">
+            {['Usia Dini', 'Pra Remaja', 'Remaja', 'Dewasa', 'Pembina', 'Istimewa', 'Campuran'].map(g => {
+              const count = stats.byGol[g] || 0
+              if (count === 0) return null
+              return <span key={g} className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{g} {count}</span>
+            })}
           </div>
           <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
             <div className="h-full rounded-full bg-hijau-sedang transition-all"
