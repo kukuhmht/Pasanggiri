@@ -46,17 +46,26 @@ export default function HasilPage() {
   })
 
   // Juara umum: medali per kontingen
-  const medali: Record<string, { emas: number; perak: number; perunggu: number }> = {}
+  const medali: Record<string, { emas: number; perak: number; perunggu: number; nilaiAgregat: number }> = {}
   Object.values(groups).forEach(arr => {
-    arr.sort((a, b) => b.nilai_akhir - a.nilai_akhir)
+    arr.sort((a, b) => b.nilai_akhir - a.nilai_akhir) // Sort per group untuk ambil top 3
     arr.slice(0, 3).forEach((r, i) => {
-      const m = medali[r.kontingen?.nama || '?'] = medali[r.kontingen?.nama || '?'] || { emas: 0, perak: 0, perunggu: 0 }
+      const kontingenNama = r.kontingen?.nama || '?'
+      const m = medali[kontingenNama] = medali[kontingenNama] || { emas: 0, perak: 0, perunggu: 0, nilaiAgregat: 0 }
       if (i === 0) m.emas++; else if (i === 1) m.perak++; else m.perunggu++
     })
   })
+
+  // Hitung nilaiAgregat untuk semua peserta di tiap kontingen
+  filtered.forEach(r => {
+    const kontingenNama = r.kontingen?.nama || '?'
+    const m = medali[kontingenNama] = medali[kontingenNama] || { emas: 0, perak: 0, perunggu: 0, nilaiAgregat: 0 }
+    m.nilaiAgregat += r.nilai_akhir // Tambahkan semua nilai akhir peserta ke total kontingen
+  })
+
   const juara = Object.entries(medali)
     .map(([kontingen, m]) => ({ kontingen, ...m, poin: m.emas * 3 + m.perak * 2 + m.perunggu }))
-    .sort((a, b) => b.poin - a.poin || b.emas - a.emas || b.perak - a.perak)
+    .sort((a, b) => b.emas - a.emas || b.perak - a.perak || b.perunggu - a.perunggu || b.nilaiAgregat - a.nilaiAgregat)
 
   const medalIcons = ['🥇', '🥈', '🥉']
   const medalLabels = ['EMAS', 'SILVER', 'PERUNGGU']

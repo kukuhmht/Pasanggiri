@@ -193,7 +193,20 @@ export default function JuriPage() {
     if (!pesertaAktif || !eventId) return
     if (!juri) return setMessage('Pilih posisi juri.')
     if (!namaJuri.trim()) return setMessage('Nama juri wajib diisi.')
-    if (waktuTotal <= 0) return setMessage('Isi waktu tampil.')
+    if (waktuTotal <= 0) return setMessage('Waktu tampil belum diterima dari admin.')
+
+    // Validasi setiap kriteria wajib diisi sesuai range kategori
+    const errors: string[] = []
+    kriteriaKeys.forEach(key => {
+      const range = getRange(key)
+      const val = nilai[key]
+      if (!val || val <= 0) {
+        errors.push(`${KRITERIA_META[key].nama} wajib diisi`)
+      } else if (val < range.min || val > range.max) {
+        errors.push(`${KRITERIA_META[key].nama} harus ${range.min}-${range.max}`)
+      }
+    })
+    if (errors.length > 0) return setMessage(errors.join('; '))
 
     setSaving(true); setMessage('')
     const res = await fetch(`/api/events/${eventId}/nilai`, {
@@ -304,32 +317,35 @@ export default function JuriPage() {
               {kriteriaKeys.map(key => {
                 const meta = KRITERIA_META[key]
                 const range = getRange(key)
+                const val = nilai[key]
+                const isInvalid = val !== undefined && (val <= 0 || val < range.min || val > range.max)
                 return (
                   <div key={key}>
                     <div className="flex justify-between text-sm">
-                      <span className="font-semibold text-coklat">{meta.nama}</span>
+                      <span className="font-semibold text-coklat">{meta.nama} <span className="text-merah-error">*</span></span>
                       <span className="text-[10px] text-gray-400">{range.min}–{range.max}</span>
                     </div>
                     <input type="number" inputMode="numeric" min={range.min} max={range.max}
                       value={nilai[key] ?? ''} onChange={e => setNilai(n => ({ ...n, [key]: parseFloat(e.target.value) || 0 }))}
                       className={`mt-1 w-full rounded-lg border-2 px-3 py-2.5 focus:outline-none ${
-                        nilai[key] !== undefined && (nilai[key] < range.min || nilai[key] > range.max) ? 'border-merah-error bg-red-50' : 'border-gray-200 focus:border-emas'
+                        isInvalid ? 'border-merah-error bg-red-50' : 'border-gray-200 focus:border-emas'
                       }`} />
                   </div>
                 )
               })}
 
-              {/* Waktu */}
+              {/* Waktu — read-only, diterima dari Admin */}
               <div>
-                <span className="text-sm font-semibold text-coklat">Waktu Tampil</span>
+                <span className="text-sm font-semibold text-coklat">Waktu Tampil <span className="text-[10px] text-gray-400 font-normal">(dari Admin)</span></span>
                 <div className="flex items-center gap-2 mt-1">
-                  <input type="number" inputMode="numeric" min="0" max="59" value={waktuMenit}
-                    onChange={e => setWaktuMenit(e.target.value)}
-                    className="w-16 rounded-lg border-2 border-gray-200 px-2 py-2.5 text-center focus:border-emas focus:outline-none" placeholder="mm" />
+                  <div className={`w-16 rounded-lg border-2 px-2 py-2.5 text-center font-bold ${waktuTotal > 0 ? 'border-hijau-sedang bg-hijau-tua/5 text-hijau-tua' : 'border-gray-200 bg-gray-100 text-gray-400'}`}>
+                    {waktuMenit || '0'}
+                  </div>
                   <span className="font-bold text-coklat">:</span>
-                  <input type="number" inputMode="numeric" min="0" max="59" value={waktuDetik}
-                    onChange={e => setWaktuDetik(e.target.value)}
-                    className="w-16 rounded-lg border-2 border-gray-200 px-2 py-2.5 text-center focus:border-emas focus:outline-none" placeholder="ss" />
+                  <div className={`w-16 rounded-lg border-2 px-2 py-2.5 text-center font-bold ${waktuTotal > 0 ? 'border-hijau-sedang bg-hijau-tua/5 text-hijau-tua' : 'border-gray-200 bg-gray-100 text-gray-400'}`}>
+                    {waktuDetik || '0'}
+                  </div>
+                  {waktuTotal <= 0 && <span className="text-[10px] text-merah-error font-semibold">Menunggu kiriman waktu...</span>}
                 </div>
               </div>
 
