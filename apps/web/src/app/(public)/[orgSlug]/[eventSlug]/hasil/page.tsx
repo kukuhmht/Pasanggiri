@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 
 type RekapRow = {
@@ -9,10 +9,13 @@ type RekapRow = {
   jumlah_juri: number; nilai_akhir: number
 }
 
+type Peserta = { id: string; kategori: string; golongan: string }
+
 export default function HasilPage() {
   const { orgSlug, eventSlug } = useParams()
   const [eventId, setEventId] = useState('')
   const [rekap, setRekap] = useState<RekapRow[]>([])
+  const [allPeserta, setAllPeserta] = useState<Peserta[]>([])
   const [loading, setLoading] = useState(true)
   const [filterKategori, setFilterKategori] = useState('')
   const [filterGolongan, setFilterGolongan] = useState('')
@@ -24,9 +27,14 @@ export default function HasilPage() {
     if (!res.ok) { setLoading(false); return }
     const { event } = await res.json()
     setEventId(event.id)
-    const rRes = await fetch(`/api/events/${event.id}/rekap`)
-    const { data } = await rRes.json()
-    setRekap(data || [])
+    const [rRes, pRes] = await Promise.all([
+      fetch(`/api/events/${event.id}/rekap`),
+      fetch(`/api/events/${event.id}/peserta`),
+    ])
+    const { data: rekapData } = await rRes.json()
+    const { data: pesertaData } = await pRes.json()
+    setRekap(rekapData || [])
+    setAllPeserta(pesertaData || [])
     setLoading(false)
   }
 
@@ -38,6 +46,16 @@ export default function HasilPage() {
     (!filterKategori || r.kategori === filterKategori) &&
     (!filterGolongan || r.golongan === filterGolongan)
   )
+
+  const stats = useMemo(() => {
+    const pesertaTerfilter = allPeserta.filter(p =>
+      (!filterKategori || p.kategori === filterKategori) &&
+      (!filterGolongan || p.golongan === filterGolongan)
+    )
+    const total = pesertaTerfilter.length
+    const sudah = filtered.length
+    return { total, sudah, belum: total - sudah }
+  }, [allPeserta, filtered, filterKategori, filterGolongan])
 
   const groups: Record<string, RekapRow[]> = {}
   filtered.forEach(r => {
@@ -85,6 +103,31 @@ export default function HasilPage() {
           {['Usia Dini', 'Pra Remaja', 'Remaja', 'Dewasa', 'Pembina', 'Istimewa', 'Campuran'].map(g => <option key={g} value={g}>{g}</option>)}
         </select>
       </div>
+
+      {/* Statistik Penilaian */}
+      {stats.total > 0 && (
+        <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-5 shadow">
+          <h2 className="font-[family-name:var(--font-cinzel)] text-sm font-bold text-hijau-tua mb-3">📊 Statistik Penilaian</h2>
+          <div className="grid grid-cols-3 gap-3 text-center mb-3">
+            <div>
+              <div className="font-[family-name:var(--font-cinzel)] text-2xl font-bold text-hijau-tua">{stats.total}</div>
+              <div className="text-[10px] text-coklat">Total Peserta</div>
+            </div>
+            <div>
+              <div className="font-[family-name:var(--font-cinzel)] text-2xl font-bold text-hijau-sedang">{stats.sudah}</div>
+              <div className="text-[10px] text-coklat">Sudah Dinilai</div>
+            </div>
+            <div>
+              <div className="font-[family-name:var(--font-cinzel)] text-2xl font-bold text-gray-400">{stats.belum}</div>
+              <div className="text-[10px] text-coklat">Belum Dinilai</div>
+            </div>
+          </div>
+          <div className="h-2 w-full rounded-full bg-gray-200 overflow-hidden">
+            <div className="h-full rounded-full bg-hijau-sedang transition-all"
+              style={{ width: `${stats.total > 0 ? (stats.sudah / stats.total) * 100 : 0}%` }} />
+          </div>
+        </div>
+      )}
 
       {/* Juara Umum */}
       {juara.length > 0 && (
