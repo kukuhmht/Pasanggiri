@@ -36,6 +36,26 @@ const KRITERIA_PER_KATEGORI: Record<string, string[]> = {
   'ATT': ['orisinalitas', 'kemantapan', 'kekayaanTeknik'],
 }
 
+const JURI_LIST = ['Juri 1', 'Juri 2', 'Juri 3', 'Juri 4', 'Juri 5']
+
+const KRITERIA_META: Record<string, { nama: string; min: number; max: number }> = {
+  orisinalitas: { nama: 'ORISINALITAS', min: 14, max: 50 },
+  kemantapan: { nama: 'KEMANTAPAN', min: 20, max: 25 },
+  stamina: { nama: 'STAMINA', min: 20, max: 25 },
+  kekompakan: { nama: 'KEKOMPAKAN', min: 14, max: 25 },
+  kreatifitas: { nama: 'KREATIFITAS', min: 20, max: 25 },
+  kekayaanTeknik: { nama: 'KEKAYAAN TEKNIK', min: 20, max: 25 },
+  teknikSerangBela: { nama: 'TEKNIK SERANG BELA', min: 45, max: 50 },
+  penghayatan: { nama: 'PENGHAYATAN', min: 20, max: 25 },
+}
+
+const ORISINALITAS_RANGE: Record<string, { min: number; max: number }> = {
+  'MASSAL': { min: 14, max: 25 },
+  'DEFAULT': { min: 39, max: 50 },
+}
+
+type Peserta = { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[]; kontingen: { nama: string } | null }
+
 export default function RekapPage() {
   const { id: eventId } = useParams()
   const [rows, setRows] = useState<NilaiRow[]>([])
@@ -43,6 +63,7 @@ export default function RekapPage() {
   const [filterKategori, setFilterKategori] = useState('')
   const [filterGolongan, setFilterGolongan] = useState('')
   const [saving, setSaving] = useState<string | null>(null)
+  const [showTambah, setShowTambah] = useState(false)
   const debounceRef = useRef<Record<string, NodeJS.Timeout>>({})
   const rowsRef = useRef<NilaiRow[]>([])
 
@@ -151,7 +172,10 @@ export default function RekapPage() {
       <div className="flex items-center gap-3">
         <Link href={`/app/events/${eventId}`} className="text-sm text-coklat hover:underline">← Detail Event</Link>
         <h2 className="font-[family-name:var(--font-cinzel)] text-xl font-bold text-hijau-tua">Rekap Nilai</h2>
-        <button onClick={loadData} className="ml-auto rounded bg-gray-100 px-3 py-1 text-xs font-bold hover:bg-gray-200">↻</button>
+        <button onClick={() => setShowTambah(true)} className="ml-auto rounded-lg bg-hijau-tua px-4 py-2 text-xs font-bold text-emas-terang hover:brightness-110">
+          + Tambah Nilai
+        </button>
+        <button onClick={loadData} className="rounded bg-gray-100 px-3 py-1 text-xs font-bold hover:bg-gray-200">↻</button>
       </div>
 
       {/* Filters */}
@@ -309,6 +333,225 @@ export default function RekapPage() {
           </table>
         </div>
       )}
+
+      {showTambah && <TambahNilaiModal eventId={eventId as string} onClose={() => { setShowTambah(false); loadData() }} />}
+    </div>
+  )
+}
+
+/* ==================== TAMBAH NILAI MODAL ==================== */
+function TambahNilaiModal({ eventId, onClose }: { eventId: string; onClose: () => void }) {
+  const [pesertaList, setPesertaList] = useState<Peserta[]>([])
+  const [search, setSearch] = useState('')
+  const [selectedPeserta, setSelectedPeserta] = useState<Peserta | null>(null)
+  const [juri, setJuri] = useState('')
+  const [namaJuri, setNamaJuri] = useState('')
+  const [nilai, setNilai] = useState<Record<string, number>>({})
+  const [waktuMenit, setWaktuMenit] = useState('')
+  const [waktuDetik, setWaktuDetik] = useState('')
+  const [keluarGelanggang, setKeluarGelanggang] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { loadPeserta() }, [])
+
+  async function loadPeserta() {
+    const res = await fetch(`/api/events/${eventId}/peserta`)
+    const { data } = await res.json()
+    setPesertaList(data || [])
+    setLoading(false)
+  }
+
+  const filteredPeserta = pesertaList.filter(p => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    return p.no_urut.toLowerCase().includes(q) ||
+      (p.anggota || []).some(a => a.toLowerCase().includes(q)) ||
+      p.kontingen?.nama.toLowerCase().includes(q)
+  })
+
+  function selectPeserta(p: Peserta) {
+    setSelectedPeserta(p)
+    setSearch('')
+    setNilai({})
+    setWaktuMenit('')
+    setWaktuDetik('')
+    setKeluarGelanggang(0)
+    setMessage('')
+  }
+
+  const kriteriaKeys = selectedPeserta ? (KRITERIA_PER_KATEGORI[selectedPeserta.kategori] || []) : []
+
+  function getRange(key: string, kategori: string) {
+    if (key === 'orisinalitas') return ORISINALITAS_RANGE[kategori] || ORISINALITAS_RANGE.DEFAULT
+    return KRITERIA_META[key] || { min: 0, max: 100 }
+  }
+
+  const waktuTotal = (parseInt(waktuMenit) || 0) * 60 + (parseInt(waktuDetik) || 0)
+
+  async function handleSubmit() {
+    if (!selectedPeserta) return setMessage('Pilih peserta terlebih dahulu.')
+    if (!juri) return setMessage('Pilih posisi juri.')
+    if (!namaJuri.trim()) return setMessage('Nama juri wajib diisi.')
+    if (waktuTotal <= 0) return setMessage('Isi waktu tampil.')
+
+    setSaving(true)
+    setMessage('')
+    const res = await fetch(`/api/events/${eventId}/nilai`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        peserta_id: selectedPeserta.id,
+        posisi_juri: juri,
+        nama_juri: namaJuri.trim(),
+        nilai,
+        waktu_detik: waktuTotal,
+        keluar_gelanggang: keluarGelanggang,
+        kategori: selectedPeserta.kategori,
+      })
+    })
+    const result = await res.json()
+    setSaving(false)
+
+    if (!res.ok) return setMessage(result.error || 'Gagal menyimpan.')
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="w-full max-w-2xl rounded-xl bg-putih-gading shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="sticky top-0 bg-putih-gading border-b-2 border-emas px-6 py-4 flex items-center justify-between">
+          <h3 className="font-[family-name:var(--font-cinzel)] text-lg font-bold text-hijau-tua">Tambah Nilai Manual</h3>
+          <button onClick={onClose} className="text-2xl text-coklat hover:text-hijau-tua">&times;</button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {!selectedPeserta ? (
+            <div className="space-y-3">
+              <label className="text-sm font-bold text-coklat">Cari & Pilih Peserta</label>
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                className="w-full rounded-lg border-2 border-gray-200 px-3 py-2 focus:border-emas focus:outline-none"
+                placeholder="Cari no. urut, nama peserta, atau kontingen..." autoFocus />
+              
+              {loading ? (
+                <p className="text-sm text-center text-coklat py-4">Memuat peserta...</p>
+              ) : (
+                <div className="max-h-[300px] overflow-y-auto space-y-1 rounded-lg border-2 border-gray-200 p-2">
+                  {filteredPeserta.slice(0, 30).map(p => (
+                    <button key={p.id} onClick={() => selectPeserta(p)}
+                      className="w-full flex items-start justify-between rounded px-3 py-2 text-left text-sm hover:bg-emas/10 transition border border-transparent hover:border-emas">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-hijau-tua">{(p.anggota || []).join(', ')}</div>
+                        <div className="text-xs text-gray-500">{p.kategori} · {p.golongan} · {p.kontingen?.nama || '-'}</div>
+                      </div>
+                      <span className="text-[10px] font-mono text-gray-400 ml-2 flex-shrink-0">{p.no_urut}</span>
+                    </button>
+                  ))}
+                  {filteredPeserta.length === 0 && <p className="text-xs text-gray-400 text-center py-4">Tidak ditemukan.</p>}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="rounded-lg bg-hijau-tua/5 border-2 border-emas p-3 text-sm space-y-1">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="text-xs font-bold text-hijau-sedang uppercase">Peserta Terpilih</div>
+                    <div className="font-bold text-hijau-tua mt-1">{(selectedPeserta.anggota || []).join(', ')}</div>
+                    <div className="text-xs text-coklat mt-0.5">
+                      {selectedPeserta.no_urut} · {selectedPeserta.kategori} · {selectedPeserta.golongan} · {selectedPeserta.kontingen?.nama || '-'}
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedPeserta(null)} className="text-xs text-coklat hover:underline ml-2 flex-shrink-0">
+                    Ganti
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="text-sm font-semibold text-coklat">Posisi Juri</label>
+                  <select value={juri} onChange={e => setJuri(e.target.value)}
+                    className="mt-1 w-full rounded-lg border-2 border-gray-200 px-3 py-2 focus:border-emas focus:outline-none">
+                    <option value="">Pilih...</option>
+                    {JURI_LIST.map(j => <option key={j} value={j}>{j}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-coklat">Nama Juri</label>
+                  <input value={namaJuri} onChange={e => setNamaJuri(e.target.value)}
+                    className="mt-1 w-full rounded-lg border-2 border-gray-200 px-3 py-2 focus:border-emas focus:outline-none"
+                    placeholder="Nama lengkap" />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-coklat">Input Nilai Kriteria</label>
+                {kriteriaKeys.map(key => {
+                  const meta = KRITERIA_META[key]
+                  const range = getRange(key, selectedPeserta.kategori)
+                  return (
+                    <div key={key}>
+                      <div className="flex justify-between text-sm">
+                        <label className="font-semibold text-coklat">{meta.nama}</label>
+                        <span className="text-xs text-gray-400">{range.min}–{range.max}</span>
+                      </div>
+                      <input type="number" inputMode="numeric"
+                        min={range.min} max={range.max}
+                        value={nilai[key] ?? ''} onChange={e => setNilai(n => ({ ...n, [key]: parseFloat(e.target.value) || 0 }))}
+                        className={`mt-1 w-full rounded-lg border-2 px-3 py-2 focus:outline-none ${
+                          nilai[key] !== undefined && (nilai[key] < range.min || nilai[key] > range.max)
+                            ? 'border-merah-error bg-red-50' : 'border-gray-200 focus:border-emas'
+                        }`} />
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-coklat">Waktu Tampil (mm:ss)</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input type="number" inputMode="numeric" min="0" max="59" placeholder="mm"
+                    value={waktuMenit} onChange={e => setWaktuMenit(e.target.value)}
+                    className="w-20 rounded-lg border-2 border-gray-200 px-3 py-2 text-center focus:border-emas focus:outline-none" />
+                  <span className="text-xl font-bold text-coklat">:</span>
+                  <input type="number" inputMode="numeric" min="0" max="59" placeholder="ss"
+                    value={waktuDetik} onChange={e => setWaktuDetik(e.target.value)}
+                    className="w-20 rounded-lg border-2 border-gray-200 px-3 py-2 text-center focus:border-emas focus:outline-none" />
+                </div>
+              </div>
+
+              {selectedPeserta.kategori === 'BERPASANGAN' && (
+                <div>
+                  <label className="text-sm font-semibold text-coklat">Keluar Gelanggang (kali)</label>
+                  <input type="number" inputMode="numeric" min="0" value={keluarGelanggang}
+                    onChange={e => setKeluarGelanggang(parseInt(e.target.value) || 0)}
+                    className="mt-1 w-24 rounded-lg border-2 border-gray-200 px-3 py-2 focus:border-emas focus:outline-none" />
+                  {keluarGelanggang > 0 && (
+                    <p className="mt-1 text-xs font-bold text-merah-error">{keluarGelanggang}× keluar → −{keluarGelanggang * 5} poin</p>
+                  )}
+                </div>
+              )}
+
+              {message && (
+                <p className={`text-sm font-semibold ${message.includes('tersimpan') ? 'text-hijau-sedang' : 'text-merah-error'}`}>
+                  {message}
+                </p>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button onClick={handleSubmit} disabled={saving}
+                  className="flex-1 rounded-lg bg-hijau-tua py-3 font-bold text-emas-terang hover:brightness-110 disabled:opacity-60">
+                  {saving ? 'Menyimpan...' : 'Simpan Penilaian'}
+                </button>
+                <button onClick={onClose} className="rounded-lg border-2 border-gray-200 px-6 py-3 font-bold text-coklat hover:bg-gray-50">
+                  Batal
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

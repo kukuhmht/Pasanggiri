@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { getPusherClient } from '@/lib/pusher/client'
+import { WAKTU_BATAS_DEFAULT, WAKTU_BATAS_ATT, KEMANTAPAN_LOCK_VALUE } from '@pasanggiri/scoring'
+import { Spinner } from '@/components/spinner'
 
 const JURI_LIST = ['Juri 1', 'Juri 2', 'Juri 3', 'Juri 4', 'Juri 5']
 
@@ -91,18 +93,10 @@ export default function JuriPage() {
     if (!pusher) return
 
     const channel = pusher.subscribe(`event-${eventId}`)
-    channel.bind('gelanggang-update', (data: { gelanggang_id: string; gelanggang_nama: string; peserta_aktif: Peserta | null }) => {
-      setGelanggangList(prev => prev.map(g =>
-        g.id === data.gelanggang_id ? { ...g, nama: data.gelanggang_nama, peserta_aktif: data.peserta_aktif } : g
-      ))
-      setSelectedGel(prev => {
-        if (prev === data.gelanggang_id || (!prev && gelanggangList.length <= 1)) {
-          setPesertaAktif(data.peserta_aktif)
-          setGelanggangNama(data.gelanggang_nama)
-          setNilai({}); setWaktuMenit(''); setWaktuDetik(''); setKeluarGelanggang(0); setMessage('')
-        }
-        return prev
-      })
+    channel.bind('gelanggang-update', () => {
+      // Re-fetch daftar gelanggang terbaru dari server, supaya gelanggang baru
+      // yang ditambahkan admin setelah halaman dibuka juga langsung terdeteksi.
+      loadCurrentGelanggang()
     })
 
     channel.bind('waktu-tampil-update', (data: { gelanggang_id: string; peserta_id: string; waktu_detik: number }) => {
@@ -125,11 +119,34 @@ export default function JuriPage() {
     const { data } = await res.json()
     if (!data) return
     setGelanggangList(data)
-    if (data.length === 1) {
-      setSelectedGel(data[0].id)
-      setGelanggangNama(data[0].nama)
-      setPesertaAktif(data[0].peserta_aktif)
-    }
+
+    setSelectedGel(prevSelected => {
+      if (prevSelected) {
+        const gel = data.find((g: { id: string }) => g.id === prevSelected)
+        if (!gel) {
+          // Gelanggang yang sedang dipilih sudah tidak ada (dihapus admin)
+          setPesertaAktif(null)
+          setGelanggangNama('')
+          setNilai({}); setWaktuMenit(''); setWaktuDetik(''); setKeluarGelanggang(0); setMessage('')
+          return ''
+        }
+        setGelanggangNama(gel.nama)
+        setPesertaAktif(prevPeserta => {
+          if (prevPeserta?.id !== gel.peserta_aktif?.id) {
+            setNilai({}); setWaktuMenit(''); setWaktuDetik(''); setKeluarGelanggang(0); setMessage('')
+          }
+          return gel.peserta_aktif
+        })
+        return prevSelected
+      }
+      // Belum ada gelanggang dipilih, auto-select jika hanya ada 1
+      if (data.length === 1) {
+        setGelanggangNama(data[0].nama)
+        setPesertaAktif(data[0].peserta_aktif)
+        return data[0].id
+      }
+      return prevSelected
+    })
   }
 
   function selectGelanggang(gid: string) {
@@ -176,6 +193,19 @@ export default function JuriPage() {
   }
 
   const waktuTotal = (parseInt(waktuMenit) || 0) * 60 + (parseInt(waktuDetik) || 0)
+
+  const isKemantapanLocked = useMemo(() => {
+    if (!pesertaAktif || pesertaAktif.kategori === 'BERPASANGAN') return false
+    const batas = pesertaAktif.kategori === 'ATT' ? WAKTU_BATAS_ATT : WAKTU_BATAS_DEFAULT
+    return waktuTotal > batas
+  }, [pesertaAktif, waktuTotal])
+
+  // Auto-lock nilai kemantapan ke 20 jika waktu melebihi batas kategori
+  useEffect(() => {
+    if (isKemantapanLocked) {
+      setNilai(n => ({ ...n, kemantapan: KEMANTAPAN_LOCK_VALUE }))
+    }
+  }, [isKemantapanLocked])
 
   const totalPreview = useMemo(() => {
     let base = Object.values(nilai).reduce((s, v) => s + (v || 0), 0)
@@ -246,8 +276,8 @@ export default function JuriPage() {
               placeholder="••••••" autoFocus />
             {pinError && <p className="mt-2 text-xs font-bold text-merah-error">{pinError}</p>}
             <button type="submit" disabled={pinLoading}
-              className="mt-4 w-full rounded-lg bg-hijau-tua py-3 font-bold text-emas-terang hover:brightness-110 disabled:opacity-60">
-              {pinLoading ? 'Memvalidasi...' : 'Masuk'}
+              className="mt-4 w-full rounded-lg bg-hijau-tua py-3 font-bold text-emas-terang hover:brightness-110 disabled:opacity-60 flex items-center justify-center gap-2">
+              {pinLoading && <Spinner />} {pinLoading ? 'Memvalidasi...' : 'Masuk'}
             </button>
           </form>
         </div>
@@ -318,18 +348,26 @@ export default function JuriPage() {
                 const meta = KRITERIA_META[key]
                 const range = getRange(key)
                 const val = nilai[key]
+                const locked = key === 'kemantapan' && isKemantapanLocked
                 const isInvalid = val !== undefined && (val <= 0 || val < range.min || val > range.max)
                 return (
                   <div key={key}>
                     <div className="flex justify-between text-sm">
                       <span className="font-semibold text-coklat">{meta.nama} <span className="text-merah-error">*</span></span>
-                      <span className="text-[10px] text-gray-400">{range.min}–{range.max}</span>
+                      <span className="text-[10px] text-gray-400">{locked ? `Terkunci ${KEMANTAPAN_LOCK_VALUE}` : `${range.min}–${range.max}`}</span>
                     </div>
                     <input type="number" inputMode="numeric" min={range.min} max={range.max}
-                      value={nilai[key] ?? ''} onChange={e => setNilai(n => ({ ...n, [key]: parseFloat(e.target.value) || 0 }))}
+                      value={locked ? KEMANTAPAN_LOCK_VALUE : (nilai[key] ?? '')}
+                      onChange={e => setNilai(n => ({ ...n, [key]: parseFloat(e.target.value) || 0 }))}
+                      disabled={locked}
                       className={`mt-1 w-full rounded-lg border-2 px-3 py-2.5 focus:outline-none ${
-                        isInvalid ? 'border-merah-error bg-red-50' : 'border-gray-200 focus:border-emas'
+                        locked ? 'bg-gray-100 text-gray-500 border-gray-200 cursor-not-allowed' : isInvalid ? 'border-merah-error bg-red-50' : 'border-gray-200 focus:border-emas'
                       }`} />
+                    {locked && (
+                      <p className="mt-1 text-[10px] text-merah-error font-semibold">
+                        🔒 Waktu melebihi batas ({Math.floor((pesertaAktif?.kategori === 'ATT' ? WAKTU_BATAS_ATT : WAKTU_BATAS_DEFAULT) / 60)}:{String((pesertaAktif?.kategori === 'ATT' ? WAKTU_BATAS_ATT : WAKTU_BATAS_DEFAULT) % 60).padStart(2, '0')})
+                      </p>
+                    )}
                   </div>
                 )
               })}
@@ -377,8 +415,8 @@ export default function JuriPage() {
             )}
 
             <button onClick={handleSubmit} disabled={saving}
-              className="w-full rounded-xl bg-hijau-tua py-4 font-bold text-emas-terang text-lg hover:brightness-110 disabled:opacity-60 shadow-lg">
-              {saving ? 'Menyimpan...' : 'Simpan Penilaian'}
+              className="w-full rounded-xl bg-hijau-tua py-4 font-bold text-emas-terang text-lg hover:brightness-110 disabled:opacity-60 shadow-lg flex items-center justify-center gap-2">
+              {saving && <Spinner className="h-5 w-5" />} {saving ? 'Menyimpan...' : 'Simpan Penilaian'}
             </button>
           </>
         )}

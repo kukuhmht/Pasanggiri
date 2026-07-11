@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { getPusherClient } from '@/lib/pusher/client'
+import { Spinner } from '@/components/spinner'
 
 type Peserta = { id: string; no_urut: string; kategori: string; golongan: string; anggota: string[]; kontingen: { nama: string } | null }
 type Gelanggang = {
@@ -19,6 +21,7 @@ export default function GelanggangPage() {
   const [newName, setNewName] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [activeGelId, setActiveGelId] = useState<string | null>(null)
 
   useEffect(() => { loadAll() }, [])
 
@@ -27,6 +30,18 @@ export default function GelanggangPage() {
     const t = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(t)
   }, [toast])
+
+  // Subscribe to Pusher untuk update jumlah juri secara real-time
+  useEffect(() => {
+    if (!eventId) return
+    const pusher = getPusherClient()
+    if (!pusher) return
+    const channel = pusher.subscribe(`event-${eventId}`)
+    channel.bind('nilai-update', (data: { peserta_id: string }) => {
+      setNilaiCount(prev => ({ ...prev, [data.peserta_id]: (prev[data.peserta_id] || 0) + 1 }))
+    })
+    return () => { channel.unbind_all(); pusher.unsubscribe(`event-${eventId}`) }
+  }, [eventId])
 
   async function loadAll() {
     setLoading(true)
@@ -74,8 +89,10 @@ export default function GelanggangPage() {
   }
 
   // Selesai tampil: clear peserta aktif
-  async function selesaikanPenampilan(gid: string) {
-    await updateGelanggang(gid, { peserta_aktif_id: null })
+  async function selesaikanPenampilan(gid: string, antrianOverride?: string[]) {
+    const updates: { peserta_aktif_id: null; antrian?: string[] } = { peserta_aktif_id: null }
+    if (antrianOverride) updates.antrian = antrianOverride
+    await updateGelanggang(gid, updates)
   }
 
   // Kirim waktu tampil ke juri (via Pusher, not DB)
@@ -93,10 +110,11 @@ export default function GelanggangPage() {
   }
 
   // Tampilkan berikutnya: ambil pertama dari antrian → jadi aktif
-  async function tampilkanBerikutnya(gid: string) {
+  async function tampilkanBerikutnya(gid: string, antrianOverride?: string[]) {
     const gel = gelanggangList.find(g => g.id === gid)
-    if (!gel || !gel.antrian?.length) return
-    const [next, ...rest] = gel.antrian
+    const source = antrianOverride ?? gel?.antrian
+    if (!source?.length) return
+    const [next, ...rest] = source
     await fetch(`/api/events/${eventId}/gelanggang/${gid}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ peserta_aktif_id: next, antrian: rest })
@@ -136,7 +154,9 @@ export default function GelanggangPage() {
     ;(g.antrian || []).forEach(pid => busyPesertaIds.add(pid))
   })
 
-  if (loading) return <div className="py-8 text-center text-coklat">Memuat...</div>
+  if (loading) return <div className="flex items-center justify-center py-12 gap-2 text-coklat"><Spinner className="h-5 w-5" /> Memuat data...</div>
+
+  const activeGel = gelanggangList.find(g => g.id === activeGelId) || gelanggangList[0]
 
   return (
     <div className="space-y-6">
@@ -173,30 +193,43 @@ export default function GelanggangPage() {
         </form>
       )}
 
-      {/* Gelanggang list */}
-      {gelanggangList.length === 0 ? (
-        <p className="text-center text-sm text-coklat py-8">Belum ada gelanggang.</p>
-      ) : (
-        <div className="space-y-6">
+      {/* Gelanggang Tabs */}
+      {gelanggangList.length > 1 && (
+        <div className="flex gap-1 border-b-2 border-gray-200">
           {gelanggangList.map(g => (
-            <GelanggangCard
-              key={g.id}
-              gel={g}
-              peserta={peserta}
-              nilaiCount={nilaiCount}
-              busyPesertaIds={busyPesertaIds}
-              getPesertaInfo={getPesertaInfo}
-                            onSelesaikan={() => selesaikanPenampilan(g.id)}
-              onKirimWaktu={(waktu) => kirimWaktu(g.id, waktu)}
-              onNext={() => tampilkanBerikutnya(g.id)}
-              onRemoveAntrian={(idx) => removeFromAntrian(g.id, idx)}
-              onAddAntrian={(pid) => addToAntrian(g.id, pid)}
-              onReorder={(newArr) => reorderAntrian(g.id, newArr)}
-              onDelete={() => deleteGelanggang(g.id)}
-            />
+            <button key={g.id} onClick={() => setActiveGelId(g.id)}
+              className={`relative -mb-0.5 rounded-t-lg border-2 border-b-0 px-4 py-2 text-sm font-bold transition ${
+                activeGel?.id === g.id
+                  ? 'border-gray-200 bg-putih-gading text-hijau-tua'
+                  : 'border-transparent text-gray-400 hover:bg-gray-100'
+              }`}>
+              {g.peserta_aktif && <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500"></span>}
+              {g.nama}
+            </button>
           ))}
         </div>
       )}
+
+      {/* Gelanggang Card */}
+      {gelanggangList.length === 0 ? (
+        <p className="text-center text-sm text-coklat py-8">Belum ada gelanggang.</p>
+      ) : activeGel ? (
+        <GelanggangCard
+          key={activeGel.id}
+          gel={activeGel}
+          peserta={peserta}
+          nilaiCount={nilaiCount}
+          busyPesertaIds={busyPesertaIds}
+          getPesertaInfo={getPesertaInfo}
+          onSelesaikan={(antrian) => selesaikanPenampilan(activeGel.id, antrian)}
+          onKirimWaktu={(waktu) => kirimWaktu(activeGel.id, waktu)}
+          onNext={(antrian) => tampilkanBerikutnya(activeGel.id, antrian)}
+          onRemoveAntrian={(idx) => removeFromAntrian(activeGel.id, idx)}
+          onAddAntrian={(pid) => addToAntrian(activeGel.id, pid)}
+          onReorder={(newArr) => reorderAntrian(activeGel.id, newArr)}
+          onDelete={() => deleteGelanggang(activeGel.id)}
+        />
+      ) : null}
     </div>
   )
 }
@@ -208,9 +241,9 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
   nilaiCount: Record<string, number>
   busyPesertaIds: Set<string>
   getPesertaInfo: (id: string) => Peserta | undefined
-  onSelesaikan: () => void
+  onSelesaikan: (antrianOverride?: string[]) => void
   onKirimWaktu: (waktu: number) => void
-  onNext: () => void
+  onNext: (antrianOverride?: string[]) => void
   onRemoveAntrian: (idx: number) => void
   onAddAntrian: (pid: string) => void
   onReorder: (newArr: string[]) => void
@@ -220,10 +253,18 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
   const [search, setSearch] = useState('')
   const [timer, setTimer] = useState(0)
   const [isActive, setIsActive] = useState(false)
+  const [confirmSelesai, setConfirmSelesai] = useState(false)
+  const [isEditingOrder, setIsEditingOrder] = useState(false)
+  const [localAntrian, setLocalAntrian] = useState<string[]>(gel.antrian || [])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
   const dragItem = useRef<number | null>(null)
   const dragOver = useRef<number | null>(null)
   const hasAlertedRef = useRef(false)
+
+  // Sinkronisasi localAntrian dengan props saat berubah dari luar (Pusher/refresh)
+  useEffect(() => { 
+    if (!isEditingOrder) setLocalAntrian(gel.antrian || [])
+  }, [gel.antrian, isEditingOrder])
 
   function playGong() {
     try {
@@ -296,16 +337,59 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
       p.kontingen?.nama.toLowerCase().includes(q)
   })
 
-  function handleDragStart(idx: number) { dragItem.current = idx }
-  function handleDragEnter(idx: number) { dragOver.current = idx }
+  function handleDragStart(idx: number) {
+    dragItem.current = idx
+  }
+  function handleDragEnter(idx: number) {
+    if (dragItem.current === null || dragItem.current === idx) return
+    setLocalAntrian(prev => {
+      const arr = [...prev]
+      const [removed] = arr.splice(dragItem.current!, 1)
+      arr.splice(idx, 0, removed)
+      return arr
+    })
+    dragItem.current = idx
+    dragOver.current = idx
+  }
   function handleDragEnd() {
-    if (dragItem.current === null || dragOver.current === null) return
-    const arr = [...(gel.antrian || [])]
-    const [removed] = arr.splice(dragItem.current, 1)
-    arr.splice(dragOver.current, 0, removed)
     dragItem.current = null
     dragOver.current = null
-    onReorder(arr)
+  }
+
+  function saveOrder() {
+    onReorder(localAntrian)
+    setIsEditingOrder(false)
+  }
+
+  function cancelOrder() {
+    setLocalAntrian(gel.antrian || [])
+    setIsEditingOrder(false)
+  }
+
+  function handleRemoveItem(idx: number) {
+    if (isEditingOrder) {
+      setLocalAntrian(prev => prev.filter((_, i) => i !== idx))
+    } else {
+      onRemoveAntrian(idx)
+    }
+  }
+
+  function moveItem(idx: number, dir: -1 | 1) {
+    setLocalAntrian(prev => {
+      const target = idx + dir
+      if (target < 0 || target >= prev.length) return prev
+      const arr = [...prev]
+      ;[arr[idx], arr[target]] = [arr[target], arr[idx]]
+      return arr
+    })
+  }
+
+  function handleAddItem(pid: string) {
+    if (isEditingOrder) {
+      setLocalAntrian(prev => [...prev, pid])
+    } else {
+      onAddAntrian(pid)
+    }
   }
 
   return (
@@ -362,7 +446,7 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
               className="flex-1 rounded-lg bg-hijau-sedang/50 py-2.5 text-center text-sm font-bold text-white hover:bg-hijau-sedang/70 transition">
               📤 Kirim Waktu
             </button>
-            <button onClick={onSelesaikan}
+            <button onClick={() => setConfirmSelesai(true)}
               className="flex-1 rounded-lg bg-merah-error py-2.5 text-center text-sm font-bold text-white hover:brightness-110">
               ✔ Selesai Tampil
             </button>
@@ -372,7 +456,7 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
         <div className="mx-5 mb-4 rounded-xl border-2 border-dashed border-gray-300 p-4 text-center">
           <p className="text-sm text-gray-400">Tidak ada peserta tampil</p>
           {(gel.antrian || []).length > 0 && (
-            <button onClick={onNext}
+            <button onClick={() => { onNext(isEditingOrder ? localAntrian : undefined); if (isEditingOrder) setIsEditingOrder(false) }}
               className="mt-2 rounded-lg bg-hijau-tua px-4 py-2 text-xs font-bold text-emas-terang hover:brightness-110">
               ▶ Tampilkan Berikutnya
             </button>
@@ -382,32 +466,59 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
 
       {/* Antrian */}
       <div className="px-5 pb-4">
-        <div className="text-xs font-bold text-coklat mb-2">
-          Antrian Berikutnya ({(gel.antrian || []).length})
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-bold text-coklat">
+            Antrian Berikutnya ({localAntrian.length})
+          </div>
+          {!isEditingOrder ? (
+            <button onClick={() => setIsEditingOrder(true)} disabled={localAntrian.length < 2}
+              className="text-xs font-bold text-hijau-sedang hover:underline disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed">
+              ✎ Edit Urutan
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button onClick={saveOrder} className="text-xs font-bold text-green-600 hover:underline">💾 Simpan</button>
+              <button onClick={cancelOrder} className="text-xs font-bold text-gray-400 hover:underline">Batal</button>
+            </div>
+          )}
         </div>
 
-        {(gel.antrian || []).length > 0 ? (
-          <div className="space-y-1 mb-3">
-            {(gel.antrian || []).map((pid, idx) => {
+        {isEditingOrder && (
+          <p className="text-[11px] text-coklat bg-emas/10 rounded-lg px-3 py-1.5 mb-2">
+            Mode edit urutan aktif — seret item untuk mengatur ulang, lalu klik Simpan.
+          </p>
+        )}
+
+        {localAntrian.length > 0 ? (
+          <div className={`space-y-1 mb-3 ${isEditingOrder ? 'rounded-lg outline outline-2 outline-emas p-2 -m-2' : ''}`}>
+            {localAntrian.map((pid, idx) => {
               const p = getPesertaInfo(pid)
               return (
                 <div
                   key={`${pid}-${idx}`}
-                  draggable
+                  draggable={isEditingOrder}
                   onDragStart={() => handleDragStart(idx)}
                   onDragEnter={() => handleDragEnter(idx)}
                   onDragEnd={handleDragEnd}
                   onDragOver={e => e.preventDefault()}
-                  className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md transition border border-gray-100"
+                  className={`flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm hover:shadow-md transition border border-gray-100 ${isEditingOrder ? 'cursor-grab active:cursor-grabbing' : ''}`}
                 >
+                  {isEditingOrder && (
+                    <div className="flex flex-col flex-shrink-0 -ml-1 mr-1">
+                      <button onClick={() => moveItem(idx, -1)} disabled={idx === 0}
+                        className="text-hijau-sedang hover:text-hijau-tua text-xs leading-none disabled:text-gray-200 disabled:cursor-not-allowed">▲</button>
+                      <button onClick={() => moveItem(idx, 1)} disabled={idx === localAntrian.length - 1}
+                        className="text-hijau-sedang hover:text-hijau-tua text-xs leading-none disabled:text-gray-200 disabled:cursor-not-allowed">▼</button>
+                    </div>
+                  )}
                   <span className="text-gray-400 text-sm select-none">⠿</span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-gray-800">
-                      {p ? (p.anggota || []).join(', ') : pid}
+                    <span className="text-sm font-medium text-gray-800 truncate block">
+                      {p ? `${(p.anggota || []).join(', ')} — ${p.kontingen?.nama || '-'} · ${p.golongan}` : pid}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-gray-400">{p?.no_urut || ''}</span>
-                  <button onClick={() => onRemoveAntrian(idx)} className="text-red-400 hover:text-red-600 text-sm ml-1">🗑️</button>
+                  <span className="text-[10px] font-mono text-gray-400 flex-shrink-0">{p?.no_urut || ''}</span>
+                  <button onClick={() => handleRemoveItem(idx)} className="text-red-400 hover:text-red-600 text-sm ml-1 flex-shrink-0">🗑️</button>
                 </div>
               )
             })}
@@ -433,7 +544,7 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
             </div>
             <div className="max-h-[200px] overflow-y-auto space-y-1">
               {filteredPeserta.slice(0, 20).map(p => (
-                <button key={p.id} onClick={() => { onAddAntrian(p.id); setShowAdd(false); setSearch('') }}
+                <button key={p.id} onClick={() => { handleAddItem(p.id); setShowAdd(false); setSearch('') }}
                   className="w-full flex items-center justify-between rounded px-2 py-1.5 text-left text-sm hover:bg-emas/10 transition">
                   <span className="font-medium">{(p.anggota || []).join(', ')}</span>
                   <span className="text-[10px] font-mono text-gray-400">{p.no_urut}</span>
@@ -444,6 +555,44 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
           </div>
         )}
       </div>
+
+      {/* Modal Konfirmasi Selesai Tampil */}
+      {confirmSelesai && gel.peserta_aktif && (() => {
+        const jumlahJuri = nilaiCount[gel.peserta_aktif.id] || 0
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setConfirmSelesai(false)}>
+            <div className="w-full max-w-sm rounded-xl bg-putih-gading p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <h3 className="font-[family-name:var(--font-cinzel)] text-lg font-bold text-hijau-tua mb-2">Selesaikan Penampilan?</h3>
+              <div className={`rounded-lg p-3 mb-4 ${
+                jumlahJuri === 0 ? 'bg-red-50 border-2 border-red-300' :
+                jumlahJuri < 5 ? 'bg-yellow-50 border-2 border-yellow-300' :
+                'bg-green-50 border-2 border-green-300'
+              }`}>
+                <p className={`text-sm font-bold ${
+                  jumlahJuri === 0 ? 'text-red-700' : jumlahJuri < 5 ? 'text-yellow-700' : 'text-green-700'
+                }`}>
+                  {jumlahJuri === 0 && 'Belum ada juri yang menilai!'}
+                  {jumlahJuri > 0 && jumlahJuri < 5 && `Baru dinilai oleh ${jumlahJuri} dari 5 juri.`}
+                  {jumlahJuri >= 5 && 'Semua 5 juri sudah menilai.'}
+                </p>
+                {jumlahJuri < 5 && (
+                  <p className="text-xs text-gray-600 mt-1">Yakin ingin menyelesaikan penampilan?</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => { setConfirmSelesai(false); onSelesaikan(isEditingOrder ? localAntrian : undefined); if (isEditingOrder) setIsEditingOrder(false) }}
+                  className="flex-1 rounded-lg bg-merah-error py-2.5 font-bold text-white hover:brightness-110">
+                  Ya, Selesaikan
+                </button>
+                <button onClick={() => setConfirmSelesai(false)}
+                  className="rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-bold text-coklat hover:bg-gray-50">
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
