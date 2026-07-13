@@ -1,6 +1,7 @@
 import { getAdminClient } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { DonateFloatingButton, DonateFooter } from '../../donate-widget'
 
 export default async function PublicEventLayout({
   children,
@@ -55,6 +56,10 @@ export default async function PublicEventLayout({
             className="rounded-lg px-4 py-2 text-sm font-bold text-coklat hover:bg-hijau-tua/5 hover:text-hijau-tua">
             📝 Pendaftaran
           </Link>
+          <Link href={`${basePath}/live-score`}
+            className="rounded-lg px-4 py-2 text-sm font-bold text-coklat hover:bg-hijau-tua/5 hover:text-hijau-tua">
+            🔴 Live Score
+          </Link>
           <Link href={`${basePath}/hasil`}
             className="rounded-lg px-4 py-2 text-sm font-bold text-coklat hover:bg-hijau-tua/5 hover:text-hijau-tua">
             🏆 Hasil
@@ -66,6 +71,9 @@ export default async function PublicEventLayout({
       <main className="mx-auto max-w-4xl px-6 py-8">
         {children}
       </main>
+
+      <DonateFooter />
+      <DonateFloatingButton />
     </div>
   )
 }

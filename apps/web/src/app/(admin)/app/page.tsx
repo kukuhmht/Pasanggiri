@@ -3,6 +3,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { LogoutButton } from './logout-button'
 import { DashboardContent } from './dashboard-content'
+import { TrialInfoCard } from './trial-info-card'
+
+const TRIAL_TOTAL_HARI = 7
 
 export default async function AdminDashboard() {
   const supabase = await createServerSupabase()
@@ -22,6 +25,11 @@ export default async function AdminDashboard() {
   const today = new Date().toISOString().split('T')[0]
   const isExpired = org?.berlaku_hingga && org.berlaku_hingga < today
   const isActive = !isExpired && (org?.status === 'active' || org?.status === 'trial')
+  const effectiveStatus = isExpired ? 'expired' : (org?.status || '')
+
+  const sisaHari = org?.berlaku_hingga
+    ? Math.max(0, Math.ceil((new Date(org.berlaku_hingga).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0
 
   // Check super admin
   const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim())
@@ -66,27 +74,22 @@ export default async function AdminDashboard() {
             <p className="text-coklat">Organisasi belum ditemukan. Hubungi admin.</p>
           </div>
         ) : !isActive ? (
-          <div className="rounded-xl border-l-4 border-merah-error bg-putih-gading p-8 text-center shadow">
-            <h2 className="font-[family-name:var(--font-cinzel)] text-xl font-bold text-hijau-tua">
-              Langganan Belum Aktif
-            </h2>
-            <p className="mt-3 text-coklat">
-              {isExpired
-                ? <>Masa berlaku akun Anda sudah habis pada <b>{org.berlaku_hingga}</b>. Silakan perpanjang langganan.</>
-                : <>Akun organisasi Anda berstatus <b>{org.status?.toUpperCase()}</b>. Untuk mengaktifkan fitur penyelenggara, silakan berlangganan.</>
-              }
-            </p>
-            <a
-              href="https://lynk.id/kkmht/n7nd13n58nx2"
-              target="_blank"
-              rel="noopener"
-              className="mt-6 inline-block rounded-lg bg-hijau-tua px-6 py-3 font-bold text-emas-terang transition hover:brightness-110"
-            >
-              Aktivasi Langganan
-            </a>
-          </div>
+          <TrialInfoCard
+            status={effectiveStatus}
+            sisaHari={sisaHari}
+            totalHari={TRIAL_TOTAL_HARI}
+            berlakuHingga={org.berlaku_hingga}
+          />
         ) : (
-          <DashboardContent email={user.email || ''} orgNama={org.nama} />
+          <>
+            <TrialInfoCard
+              status={effectiveStatus}
+              sisaHari={sisaHari}
+              totalHari={TRIAL_TOTAL_HARI}
+              berlakuHingga={org.berlaku_hingga}
+            />
+            <DashboardContent email={user.email || ''} orgNama={org.nama} />
+          </>
         )}
       </main>
     </div>

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getAdminClient } from '@/lib/auth'
+import { DonateCTASection, DonateFloatingButton } from './(public)/donate-widget'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,7 +82,11 @@ export default async function LandingPage() {
             ))}
           </div>
         </section>
+
+        <DonateCTASection />
       </main>
+
+      <DonateFloatingButton />
     </div>
   )
 }
