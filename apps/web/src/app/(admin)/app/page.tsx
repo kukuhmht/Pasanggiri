@@ -1,7 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { LogoutButton } from './logout-button'
 import { DashboardContent } from './dashboard-content'
 import { TrialInfoCard } from './trial-info-card'
 
@@ -31,47 +29,11 @@ export default async function AdminDashboard() {
     ? Math.max(0, Math.ceil((new Date(org.berlaku_hingga).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)))
     : 0
 
-  // Check super admin
-  const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim())
-  const isSuperAdmin = superAdminEmails.includes(user.email || '')
-
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="bg-gradient-to-br from-hijau-tua to-hijau-sedang text-putih-gading">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="font-[family-name:var(--font-cinzel)] text-lg font-bold text-emas-terang">
-              {org?.nama || 'Pasanggiri'}
-            </h1>
-            <p className="text-xs opacity-80">Admin Dashboard</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {isSuperAdmin && (
-              <Link href="/sa" className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-semibold text-putih-gading hover:bg-white/20">
-                🛡️ SA
-              </Link>
-            )}
-            <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-              isExpired ? 'bg-red-500/20 text-red-200' :
-              org?.status === 'active' ? 'bg-green-500/20 text-green-200' :
-              org?.status === 'trial' ? 'bg-yellow-500/20 text-yellow-200' :
-              'bg-red-500/20 text-red-200'
-            }`}>
-              {isExpired ? 'EXPIRED' : (org?.status?.toUpperCase() || 'N/A')}
-            </span>
-            <LogoutButton />
-          </div>
-        </div>
-        <div className="h-1.5" style={{
-          backgroundImage: 'repeating-linear-gradient(45deg, #B8860B 0 8px, #D4A843 8px 16px)'
-        }} />
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 py-8">
+    <div className="space-y-6">
         {!org ? (
           <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-8 text-center shadow">
-            <p className="text-coklat">Organisasi belum ditemukan. Hubungi admin.</p>
+            <p>Organisasi belum ditemukan. Hubungi admin.</p>
           </div>
         ) : !isActive ? (
           <TrialInfoCard
@@ -91,7 +53,7 @@ export default async function AdminDashboard() {
             <DashboardContent email={user.email || ''} orgNama={org.nama} />
           </>
         )}
-      </main>
     </div>
   )
 }
+

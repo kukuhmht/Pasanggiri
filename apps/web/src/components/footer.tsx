@@ -21,7 +21,7 @@ export function Footer() {
           Instagram
         </a>
       </div>
-      <p className="text-sm text-coklat">&copy; 2026 kukuhmht - Bandung Utara</p>
+      <p className="text-sm text-coklat">&copy; 2026 kkmht - Bandung Utara</p>
     </footer>
   )
 }

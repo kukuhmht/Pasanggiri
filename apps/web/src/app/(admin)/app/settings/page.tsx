@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import Link from 'next/link'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -10,12 +9,10 @@ export default function SettingsPage() {
   const [orgNama, setOrgNama] = useState('')
   const [orgId, setOrgId] = useState('')
 
-  // Org name form
   const [newOrgNama, setNewOrgNama] = useState('')
   const [orgSaving, setOrgSaving] = useState(false)
   const [orgMessage, setOrgMessage] = useState('')
 
-  // Password form
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
@@ -85,71 +82,54 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="bg-gradient-to-br from-hijau-tua to-hijau-sedang text-putih-gading">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+    <div className="space-y-6">
+      <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-6 shadow">
+        <h2 className="font-[family-name:var(--font-cinzel)] text-base font-bold mb-4">Nama Organisasi</h2>
+        <form onSubmit={handleUpdateOrg} className="space-y-3">
           <div>
-            <h1 className="font-[family-name:var(--font-cinzel)] text-lg font-bold text-emas-terang">Pengaturan Akun</h1>
-            <p className="text-xs opacity-80">{email}</p>
+            <label className="mb-1 block text-sm font-semibold">Nama Organisasi</label>
+            <input value={newOrgNama} onChange={e => setNewOrgNama(e.target.value)}
+              className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 focus:border-emas focus:outline-none"
+              placeholder="Nama organisasi" required />
           </div>
-          <Link href="/app" className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-semibold text-putih-gading hover:bg-white/20">
-            ← Dashboard
-          </Link>
-        </div>
-        <div className="h-1.5" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #B8860B 0 8px, #D4A843 8px 16px)' }} />
-      </header>
+          {orgMessage && (
+            <p className={`text-sm font-semibold ${orgMessage.includes('berhasil') ? 'text-hijau-sedang' : 'text-merah-error'}`}>
+              {orgMessage}
+            </p>
+          )}
+          <button type="submit" disabled={orgSaving}
+            className="rounded-lg bg-hijau-tua px-6 py-2.5 font-bold text-emas-terang hover:brightness-110 disabled:opacity-60">
+            {orgSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+          </button>
+        </form>
+      </div>
 
-      <main className="mx-auto max-w-3xl px-6 py-8 space-y-6">
-        {/* Ubah Nama Organisasi */}
-        <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-6 shadow">
-          <h2 className="font-[family-name:var(--font-cinzel)] text-base font-bold text-hijau-tua mb-4">Nama Organisasi</h2>
-          <form onSubmit={handleUpdateOrg} className="space-y-3">
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-coklat">Nama Organisasi</label>
-              <input value={newOrgNama} onChange={e => setNewOrgNama(e.target.value)}
-                className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 focus:border-emas focus:outline-none"
-                placeholder="Nama organisasi" required />
-            </div>
-            {orgMessage && (
-              <p className={`text-sm font-semibold ${orgMessage.includes('berhasil') ? 'text-hijau-sedang' : 'text-merah-error'}`}>
-                {orgMessage}
-              </p>
-            )}
-            <button type="submit" disabled={orgSaving}
-              className="rounded-lg bg-hijau-tua px-6 py-2.5 font-bold text-emas-terang hover:brightness-110 disabled:opacity-60">
-              {orgSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
-            </button>
-          </form>
-        </div>
-
-        {/* Ubah Password */}
-        <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-6 shadow">
-          <h2 className="font-[family-name:var(--font-cinzel)] text-base font-bold text-hijau-tua mb-4">Ubah Password</h2>
-          <form onSubmit={handleUpdatePassword} className="space-y-3">
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-coklat">Password Baru</label>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 focus:border-emas focus:outline-none"
-                placeholder="Minimal 6 karakter" required />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-coklat">Konfirmasi Password Baru</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 focus:border-emas focus:outline-none"
-                placeholder="Ulangi password baru" required />
-            </div>
-            {pwMessage && (
-              <p className={`text-sm font-semibold ${pwMessage.includes('berhasil') ? 'text-hijau-sedang' : 'text-merah-error'}`}>
-                {pwMessage}
-              </p>
-            )}
-            <button type="submit" disabled={pwSaving}
-              className="rounded-lg bg-hijau-tua px-6 py-2.5 font-bold text-emas-terang hover:brightness-110 disabled:opacity-60">
-              {pwSaving ? 'Mengubah...' : 'Ubah Password'}
-            </button>
-          </form>
-        </div>
-      </main>
+      <div className="rounded-xl border-l-4 border-emas bg-putih-gading p-6 shadow">
+        <h2 className="font-[family-name:var(--font-cinzel)] text-base font-bold mb-4">Ubah Password</h2>
+        <form onSubmit={handleUpdatePassword} className="space-y-3">
+          <div>
+            <label className="mb-1 block text-sm font-semibold">Password Baru</label>
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+              className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 focus:border-emas focus:outline-none"
+              placeholder="Minimal 6 karakter" required />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold">Konfirmasi Password Baru</label>
+            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+              className="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 focus:border-emas focus:outline-none"
+              placeholder="Ulangi password baru" required />
+          </div>
+          {pwMessage && (
+            <p className={`text-sm font-semibold ${pwMessage.includes('berhasil') ? 'text-hijau-sedang' : 'text-merah-error'}`}>
+              {pwMessage}
+            </p>
+          )}
+          <button type="submit" disabled={pwSaving}
+            className="rounded-lg bg-hijau-tua px-6 py-2.5 font-bold text-emas-terang hover:brightness-110 disabled:opacity-60">
+            {pwSaving ? 'Mengubah...' : 'Ubah Password'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

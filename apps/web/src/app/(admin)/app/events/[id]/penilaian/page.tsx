@@ -27,6 +27,7 @@ const KRITERIA_META: Record<string, { nama: string; min: number; max: number }> 
 
 const ORISINALITAS_RANGE: Record<string, { min: number; max: number }> = {
   'MASSAL': { min: 14, max: 25 },
+  'ATT': { min: 35, max: 50 },
   'DEFAULT': { min: 39, max: 50 },
 }
 
