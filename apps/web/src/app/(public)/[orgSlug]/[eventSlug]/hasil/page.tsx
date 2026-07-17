@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
+import { getPusherClient } from '@/lib/pusher/client'
 
 type RekapRow = {
   peserta_id: string; no_urut: string; kategori: string; golongan: string
@@ -21,6 +22,19 @@ export default function HasilPage() {
   const [filterGolongan, setFilterGolongan] = useState('')
 
   useEffect(() => { loadData() }, [])
+
+  useEffect(() => {
+    if (!eventId) return
+    const pusher = getPusherClient()
+    if (!pusher) return
+
+    const channel = pusher.subscribe(`event-${eventId}`)
+    channel.bind('nilai-update', () => {
+      loadData()
+    })
+
+    return () => { channel.unbind_all(); pusher.unsubscribe(`event-${eventId}`) }
+  }, [eventId])
 
   async function loadData() {
     const res = await fetch(`/api/public/${orgSlug}/${eventSlug}`)

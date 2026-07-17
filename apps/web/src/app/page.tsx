@@ -33,7 +33,7 @@ export default async function LandingPage() {
         </nav>
         <div className="mx-auto max-w-5xl px-6 py-12 text-center">
           <h1 className="font-[family-name:var(--font-cinzel)] text-4xl font-bold text-emas-terang md:text-5xl">PASANGGIRI</h1>
-          <p className="mt-3 text-lg opacity-90">Sistem Penilaian Pencak Silat Asad</p>
+          <p className="mt-3 text-lg opacity-90">Platform Pendaftaran Kontingen & Digital Scoring Persinas Asad</p>
           <div className="mt-8 flex gap-3 justify-center">
             <Link href="/register" className="rounded-lg bg-white px-6 py-3 font-bold text-hijau-tua transition hover:brightness-110">Daftar Penyelenggara</Link>
             <Link href="/login" className="rounded-lg border-2 border-emas-terang px-6 py-3 font-bold text-emas-terang transition hover:bg-emas-terang/10">Masuk</Link>

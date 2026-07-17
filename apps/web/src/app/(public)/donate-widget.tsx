@@ -29,7 +29,7 @@ export function DonateFooter() {
         <div className="mx-auto max-w-4xl text-center">
           <p className="mb-3 text-sm text-emas-terang">💚 Bantu layanan ini tetap berjalan</p>
           <p className="mb-4 text-xs text-white/80">
-            Pasanggiri gratis untuk semua penyelenggara. Dukungan Anda membuat perbedaan.
+            pasanggiri.web.id gratis untuk semua penyelenggara. Dukungan Anda sangat berarti untuk menjaga layanan tetap berjalan.
           </p>
           <button
             onClick={() => setShowModal(true)}
@@ -57,7 +57,7 @@ export function DonateCTASection() {
             Dukung Layanan Ini
           </h2>
           <p className="mb-6 text-white/90">
-            Pasanggiri tersedia gratis untuk semua penyelenggara silat di Indonesia. Setiap donasi Anda membantu menjaga
+            pasanggiri.web.id tersedia gratis untuk semua penyelenggara Pasanggiri Persinas Asad di Indonesia. Setiap donasi Anda membantu menjaga
             layanan tetap berjalan dan berkembang.
           </p>
           <button
@@ -85,7 +85,7 @@ function DonateModal({ onClose }: { onClose: () => void }) {
 
         <div className="mb-5 space-y-3 rounded-lg bg-emas/5 p-4 text-sm text-coklat">
           <p>
-            Pasanggiri adalah <b>aplikasi penilaian silat</b> yang tersedia gratis untuk penyelenggara pertandingan.
+            pasanggiri.web.id adalah platform <b>aplikasi pendaftaran & digital scoring</b> yang tersedia gratis untuk penyelenggara Pasanggiri Persinas Asad.
           </p>
 
           <p>

@@ -22,6 +22,9 @@ export default function GelanggangPage() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [activeGelId, setActiveGelId] = useState<string | null>(null)
+  const [showGuide, setShowGuide] = useState(false)
+  const [runningTimerGelId, setRunningTimerGelId] = useState<string | null>(null)
+  const [pendingGelId, setPendingGelId] = useState<string | null>(null)
 
   useEffect(() => { loadAll() }, [])
 
@@ -158,6 +161,19 @@ export default function GelanggangPage() {
 
   const activeGel = gelanggangList.find(g => g.id === activeGelId) || gelanggangList[0]
 
+  function handleTabClick(targetGelId: string) {
+    if (runningTimerGelId && runningTimerGelId === activeGel?.id && targetGelId !== runningTimerGelId) {
+      setPendingGelId(targetGelId)
+    } else {
+      setActiveGelId(targetGelId)
+    }
+  }
+
+  function confirmTabSwitch() {
+    setActiveGelId(pendingGelId)
+    setPendingGelId(null)
+  }
+
   return (
     <div className="space-y-6">
 
@@ -168,18 +184,24 @@ export default function GelanggangPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href={`/app/events/${eventId}`} className="text-sm text-coklat hover:underline">← Detail Event</Link>
-          <h2 className="font-[family-name:var(--font-cinzel)] text-xl font-bold text-hijau-tua">
-            🏟️ Gelanggang & Antrian Tampil
-          </h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href={`/app/events/${eventId}`} className="text-sm text-coklat hover:underline">← Detail Event</Link>
+            <h2 className="font-[family-name:var(--font-cinzel)] text-xl font-bold text-hijau-tua">
+              🏟️ Gelanggang & Antrian Tampil
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowGuide(true)}
+              className="rounded-lg bg-emas/10 px-3 py-1 text-xs font-medium text-hijau-tua hover:bg-emas/20">
+              ℹ️ Panduan
+            </button>
+            <button onClick={() => setShowAddForm(v => !v)}
+              className="rounded-lg bg-hijau-tua px-4 py-2 text-xs font-bold text-emas-terang hover:brightness-110">
+              + Gelanggang
+            </button>
+          </div>
         </div>
-        <button onClick={() => setShowAddForm(v => !v)}
-          className="rounded-lg bg-hijau-tua px-4 py-2 text-xs font-bold text-emas-terang hover:brightness-110">
-          + Gelanggang
-        </button>
-      </div>
 
       {showAddForm && (
         <form onSubmit={createGelanggang} className="flex gap-2">
@@ -197,7 +219,7 @@ export default function GelanggangPage() {
       {gelanggangList.length > 1 && (
         <div className="flex gap-1 border-b-2 border-gray-200">
           {gelanggangList.map(g => (
-            <button key={g.id} onClick={() => setActiveGelId(g.id)}
+            <button key={g.id} onClick={() => handleTabClick(g.id)}
               className={`relative -mb-0.5 rounded-t-lg border-2 border-b-0 px-4 py-2 text-sm font-bold transition ${
                 activeGel?.id === g.id
                   ? 'border-gray-200 bg-putih-gading text-hijau-tua'
@@ -207,6 +229,38 @@ export default function GelanggangPage() {
               {g.nama}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Tab Switch Confirmation Modal */}
+      {pendingGelId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setPendingGelId(null)}>
+          <div className="w-full max-w-sm rounded-xl bg-putih-gading p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-[family-name:var(--font-cinzel)] text-lg font-bold text-hijau-tua mb-2">Pindah Gelanggang?</h3>
+            <p className="text-sm text-coklat mb-4">Waktu sedang berjalan di gelanggang saat ini. Pindah tab akan menghentikan timer dan mengembalikannya ke 00:00. Lanjutkan?</p>
+            <div className="flex gap-2">
+              <button onClick={confirmTabSwitch}
+                className="flex-1 rounded-lg bg-merah-error py-2.5 font-bold text-white hover:brightness-110">Ya, Pindah</button>
+              <button onClick={() => setPendingGelId(null)}
+                className="rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-bold text-coklat hover:bg-gray-50">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Panduan Modal */}
+      {showGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowGuide(false)}>
+          <div className="w-full max-w-2xl rounded-xl bg-putih-gading p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-[family-name:var(--font-cinzel)] text-xl font-bold text-hijau-tua mb-4">Panduan Penggunaan Gelanggang</h3>
+            <ul className="list-disc pl-6 space-y-2 text-coklat text-sm">
+              <li>Saat peserta sedang tampil (timer berjalan), <strong>JANGAN</strong> melakukan refresh halaman, menambah antrian, mengubah urutan tampil, berpindah menu, atau berpindah ke gelanggang lain. Tindakan tersebut akan menghentikan timer dan mengembalikannya ke 00:00.</li>
+              <li>Untuk mengubah urutan tampil, gunakan <strong>perangkat lain</strong> (misal laptop terpisah) sehingga timer tidak terganggu.</li>
+              <li>Waktu tampil sangat krusial bagi Juri karena Juri <strong>tidak dapat menginput waktu</strong> sendiri. Admin harus mengirim waktu lewat tombol "Kirim Waktu". Oleh karena itu, <strong>JANGAN</strong> mereset waktu atau keluar dari tampilan waktu sebelum mengklik "Kirim Waktu".</li>
+            </ul>
+            <button onClick={() => setShowGuide(false)}
+              className="mt-5 w-full rounded-lg bg-hijau-tua px-4 py-2 font-bold text-emas-terang hover:brightness-110">Tutup</button>
+          </div>
         </div>
       )}
 
@@ -221,6 +275,7 @@ export default function GelanggangPage() {
           nilaiCount={nilaiCount}
           busyPesertaIds={busyPesertaIds}
           getPesertaInfo={getPesertaInfo}
+          onTimerChange={(running) => setRunningTimerGelId(running ? activeGel.id : (runningTimerGelId === activeGel.id ? null : runningTimerGelId))}
           onSelesaikan={(antrian) => selesaikanPenampilan(activeGel.id, antrian)}
           onKirimWaktu={(waktu) => kirimWaktu(activeGel.id, waktu)}
           onNext={(antrian) => tampilkanBerikutnya(activeGel.id, antrian)}
@@ -235,7 +290,7 @@ export default function GelanggangPage() {
 }
 
 /* ==================== GELANGGANG CARD ==================== */
-function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaInfo, onSelesaikan, onKirimWaktu, onNext, onRemoveAntrian, onAddAntrian, onReorder, onDelete }: {
+function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaInfo, onSelesaikan, onKirimWaktu, onNext, onRemoveAntrian, onAddAntrian, onReorder, onDelete, onTimerChange }: {
   gel: Gelanggang
   peserta: Peserta[]
   nilaiCount: Record<string, number>
@@ -248,6 +303,7 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
   onAddAntrian: (pid: string) => void
   onReorder: (newArr: string[]) => void
   onDelete: () => void
+  onTimerChange: (running: boolean) => void
 }) {
   const [showAdd, setShowAdd] = useState(false)
   const [search, setSearch] = useState('')
@@ -273,13 +329,15 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
   }
 
   useEffect(() => {
+    onTimerChange(isActive)
+
     if (isActive) {
       timerRef.current = setInterval(() => setTimer(t => t + 1), 1000)
     } else {
       if (timerRef.current) clearInterval(timerRef.current)
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [isActive])
+  }, [isActive, onTimerChange])
 
   // Reset alert flag & timer when active peserta changes
   useEffect(() => {
@@ -429,13 +487,19 @@ function GelanggangCard({ gel, peserta, nilaiCount, busyPesertaIds, getPesertaIn
             <div className="text-[10px] font-bold text-emas-terang uppercase">▶ Sedang Tampil</div>
             <div className={`font-mono text-3xl font-bold ${getTimerColor()}`}>{formatTime(timer)}</div>
           </div>
-          <div className="text-lg font-bold">{(gel.peserta_aktif.anggota || []).join(', ')}</div>
-          <div className="text-xs opacity-80 mt-0.5 mb-3">
-            {gel.peserta_aktif.no_urut} · {gel.peserta_aktif.kategori} · {gel.peserta_aktif.golongan}
-          </div>
-          
-          {/* Timer Controls */}
-          <div className="flex gap-2 mb-2">
+           <div className="text-lg font-bold">{(gel.peserta_aktif.anggota || []).join(', ')}</div>
+           <div className="text-xs opacity-80 mt-0.5 mb-3">
+             {gel.peserta_aktif.no_urut} · {gel.peserta_aktif.kategori} · {gel.peserta_aktif.golongan}
+           </div>
+
+          {isActive && (
+            <div className="rounded-lg bg-red-500/20 text-red-100 text-xs px-3 py-2 mb-3 font-semibold">
+              ⚠️ Waktu sedang berjalan — hindari refresh, pindah menu, pindah tab gelanggang, atau ubah antrian.
+            </div>
+          )}
+           
+           {/* Timer Controls */}
+           <div className="flex gap-2 mb-2">
             {!isActive ? (
               <button onClick={() => setIsActive(true)}
                 className="flex-1 rounded-lg bg-green-600 py-2 text-center text-sm font-bold text-white hover:brightness-110">
