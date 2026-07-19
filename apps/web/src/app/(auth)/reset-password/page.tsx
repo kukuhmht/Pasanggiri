@@ -7,7 +7,6 @@ import Link from 'next/link'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
-  const supabase = createClient()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,8 +14,8 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
 
-  // Supabase sets session from the URL hash after email link click
   useEffect(() => {
+    const supabase = createClient()
     supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setSessionReady(true)
@@ -42,6 +41,7 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true)
+    const supabase = createClient()
     const { error: updateError } = await supabase.auth.updateUser({ password })
     setLoading(false)
 
