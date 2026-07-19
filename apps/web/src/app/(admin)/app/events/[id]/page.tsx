@@ -524,7 +524,7 @@ const KATEGORI_LIMITS: Record<string, { min: number; max: number }> = {
   'PERORANGAN': { min: 1, max: 1 },
   'BERPASANGAN': { min: 2, max: 2 },
   'BERKELOMPOK': { min: 3, max: 5 },
-  'MASSAL': { min: 8, max: 25 },
+  'MASSAL': { min: 10, max: 25 },
   'ATT': { min: 6, max: 6 },
 }
 
