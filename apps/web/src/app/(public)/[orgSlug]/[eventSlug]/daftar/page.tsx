@@ -9,7 +9,7 @@ const KATEGORI = [
   { nama: 'PERORANGAN', min: 1, max: 1 },
   { nama: 'BERPASANGAN', min: 2, max: 2 },
   { nama: 'BERKELOMPOK', min: 3, max: 5 },
-  { nama: 'MASSAL', min: 8, max: 25 },
+  { nama: 'MASSAL', min: 10, max: 25 },
   { nama: 'ATT', min: 6, max: 6 },
 ]
 const GOLONGAN = ['Usia Dini', 'Pra Remaja', 'Remaja', 'Dewasa', 'Pembina', 'Istimewa', 'Campuran']
