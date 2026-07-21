@@ -1,7 +1,41 @@
+import type { Metadata } from 'next'
 import { getAdminClient } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { DonateFloatingButton, DonateFooter } from '../../donate-widget'
+
+async function resolvePublicEvent(orgSlug: string, eventSlug: string) {
+  const db = getAdminClient()
+  const { data: org } = await db
+    .from('organizations')
+    .select('id, nama, slug')
+    .eq('slug', orgSlug)
+    .single()
+  if (!org) return null
+  const { data: event } = await db
+    .from('events')
+    .select('id, nama, subjudul, tahun, is_public, slug')
+    .eq('org_id', org.id)
+    .eq('slug', eventSlug)
+    .single()
+  if (!event || !event.is_public) return null
+  return { org, event }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ orgSlug: string; eventSlug: string }> }): Promise<Metadata> {
+  const { orgSlug, eventSlug } = await params
+  const result = await resolvePublicEvent(orgSlug, eventSlug)
+  if (!result) return { title: 'Event tidak ditemukan' }
+  const { org, event } = result
+  const title = `${event.nama} ${event.tahun}`
+  const desc = `${event.subjudul || 'Pendaftaran, live score, dan hasil'} - ${event.nama} ${event.tahun} oleh ${org.nama}. Dikelola dengan Pasanggiri.`
+  return {
+    title,
+    description: desc,
+    openGraph: { title, description: desc, type: 'website' },
+    alternates: { canonical: `/${orgSlug}/${eventSlug}/daftar` },
+  }
+}
 
 export default async function PublicEventLayout({
   children,
@@ -11,25 +45,9 @@ export default async function PublicEventLayout({
   params: Promise<{ orgSlug: string; eventSlug: string }>
 }) {
   const { orgSlug, eventSlug } = await params
-  const db = getAdminClient()
-
-  // Resolve org + event
-  const { data: org } = await db
-    .from('organizations')
-    .select('id, nama, slug')
-    .eq('slug', orgSlug)
-    .single()
-
-  if (!org) notFound()
-
-  const { data: event } = await db
-    .from('events')
-    .select('id, nama, subjudul, tahun, is_public, slug')
-    .eq('org_id', org.id)
-    .eq('slug', eventSlug)
-    .single()
-
-  if (!event || !event.is_public) notFound()
+  const result = await resolvePublicEvent(orgSlug, eventSlug)
+  if (!result) notFound()
+  const { org, event } = result
 
   const basePath = `/${orgSlug}/${eventSlug}`
 
