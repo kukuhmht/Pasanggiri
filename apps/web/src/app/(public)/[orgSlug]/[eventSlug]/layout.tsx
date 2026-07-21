@@ -28,12 +28,13 @@ export async function generateMetadata({ params }: { params: Promise<{ orgSlug: 
   if (!result) return { title: 'Event tidak ditemukan' }
   const { org, event } = result
   const title = `${event.nama} ${event.tahun}`
-  const desc = `${event.subjudul || 'Pendaftaran, live score, dan hasil'} - ${event.nama} ${event.tahun} oleh ${org.nama}. Dikelola dengan Pasanggiri.`
+  const desc = `${event.subjudul || 'Pendaftaran, live score, dan hasil'} - ${event.nama} ${event.tahun} oleh ${org.nama}. Event Pasanggiri Asad dengan sistem penilaian juri digital dan live score real-time, dikelola dengan app Pasanggiri.`
   return {
     title,
     description: desc,
     openGraph: { title, description: desc, type: 'website' },
     alternates: { canonical: `/${orgSlug}/${eventSlug}/daftar` },
+    keywords: ['event pasanggiri', event.nama, `pasanggiri ${event.tahun}`, 'live score pasanggiri', 'penilaian juri pasanggiri'],
   }
 }
 

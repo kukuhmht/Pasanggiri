@@ -21,7 +21,7 @@ export default async function LandingPage() {
     name: 'Pasanggiri',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
-    description: 'Platform pendaftaran kontingen & digital scoring Pasanggiri Persinas ASAD.',
+    description: 'App Pasanggiri untuk pendaftaran kontingen dan sistem penilaian juri Pasanggiri Asad. Aplikasi digital skoring dengan live score real-time untuk event Pasanggiri.',
     url: 'https://pasanggiri.web.id',
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'IDR' },
   }
@@ -45,7 +45,7 @@ export default async function LandingPage() {
         </nav>
         <div className="mx-auto max-w-5xl px-6 py-12 text-center">
           <h1 className="font-[family-name:var(--font-cinzel)] text-4xl font-bold text-emas-terang md:text-5xl">PASANGGIRI</h1>
-          <p className="mt-3 text-lg opacity-90">Platform Pendaftaran Kontingen & Digital Scoring Persinas Asad</p>
+          <p className="mt-3 text-lg opacity-90">App Pasanggiri untuk pendaftaran kontingen & aplikasi digital skoring Persinas Asad. Sistem penilaian juri Pasanggiri Asad dengan live score real-time.</p>
           <div className="mt-8 flex gap-3 justify-center">
             <Link href="/register" className="rounded-lg bg-white px-6 py-3 font-bold text-hijau-tua transition hover:brightness-110">Daftar Penyelenggara</Link>
             <Link href="/login" className="rounded-lg border-2 border-emas-terang px-6 py-3 font-bold text-emas-terang transition hover:bg-emas-terang/10">Masuk</Link>
@@ -54,6 +54,15 @@ export default async function LandingPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-16 space-y-16">
+        <section>
+          <h2 className="text-2xl font-bold text-center mb-4 font-[family-name:var(--font-cinzel)] text-hijau-tua">Apa itu App Pasanggiri?</h2>
+          <p className="text-center text-coklat max-w-2xl mx-auto">
+            Pasanggiri adalah aplikasi digital scoring untuk setiap event Pasanggiri Asad. 
+            Setiap event dapat menggunakan sistem penilaian pasanggiri ini untuk mengelola 
+            pendaftaran peserta, penilaian juri, hingga menampilkan live score secara real-time.
+          </p>
+        </section>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
           <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-100">
             <div className="text-3xl font-bold text-hijau-tua">{events}+</div>
