@@ -1,9 +1,9 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "pipeline": {
+  "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**"],
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
       "env": [
         "NEXT_PUBLIC_SUPABASE_URL",
         "NEXT_PUBLIC_SUPABASE_ANON_KEY",
@@ -21,7 +21,7 @@
       "persistent": true
     },
     "lint": {
-      "outputs": []
+      "dependsOn": ["^build"]
     },
     "clean": {
       "cache": false
