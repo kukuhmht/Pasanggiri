@@ -8,21 +8,23 @@ const cinzel = Cinzel({ subsets: ['latin'], variable: '--font-cinzel', weight: [
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://pasanggiri.web.id'),
-  title: { default: 'Pasanggiri | Digital Scoring Persinas ASAD', template: '%s | Pasanggiri' },
-  description: 'Platform pendaftaran kontingen & digital scoring Pasanggiri Persinas ASAD. Kelola event, peserta, juri, gelanggang real-time, dan hasil otomatis.',
+  title: { default: 'Pasanggiri | Aplikasi Digital Scoring & Penilaian Pasanggiri Asad', template: '%s | Pasanggiri' },
+  description: 'App Pasanggiri untuk pendaftaran kontingen dan sistem penilaian juri Pasanggiri Asad. Aplikasi digital skoring dengan live score real-time, gelanggang, dan hasil otomatis untuk setiap event Pasanggiri.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-192.png',
   },
   keywords: [
-    'Pasanggiri', 'Asad', 'Pasanggiri App', 'Pasanggiri Web', 'Pasanggiri Asad',
-    'Penilaian Asad', 'Penilaian Pasanggiri', 'Pencak Silat', 'Persinas Asad',
-    'Digital Scoring Pasanggiri', 'Scoring Pencak Silat', 'Pasanggiri Online',
+    'Pasaggiri', 'App Pasaggiri', 'Aplikasi Pasaggiri', 'Pasaggiri Asad',
+    'Pasaggiri Digital Scoring', 'Aplikasi Digital Skoring', 'Aplikasi Penilaian Pasaggiri',
+    'Sistem Penilaian Pasaggiri', 'Sistem Penilaian Juri Pasaggiri Asad',
+    'Juri Pasaggiri Asad', 'Live Score Pasaggiri', 'Event Pasaggiri',
+    'Persinas Asad', 'Pencak Silat', 'Digital Scoring Pencak Silat',
   ],
   openGraph: {
-    title: 'Pasanggiri | Digital Scoring Persinas ASAD',
-    description: 'Platform pendaftaran kontingen & penilaian Pasanggiri Persinas ASAD.',
+    title: 'Pasaggiri | Aplikasi Digital Scoring & Penilaian Pasaggiri Asad',
+    description: 'App Pasaggiri untuk pendaftaran kontingen dan sistem penilaian juri Pasaggiri Asad. Aplikasi digital skoring dengan live score real-time, gelanggang, dan hasil otomatis untuk setiap event Pasaggiri.',
     locale: 'id_ID',
     type: 'website',
   },
