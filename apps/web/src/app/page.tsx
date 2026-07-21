@@ -15,6 +15,17 @@ async function getStats() {
 export default async function LandingPage() {
   const { events, peserta, penilaian } = await getStats()
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Pasanggiri',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    description: 'Platform pendaftaran kontingen & digital scoring Pasanggiri Persinas ASAD.',
+    url: 'https://pasanggiri.web.id',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'IDR' },
+  }
+
   const fitur = [
     { nama: 'Pendaftaran Online', icon: '📝', img: '/screenshots/pendaftaran.png', desc: 'Peserta daftar mandiri, data otomatis terorganisir.' },
     { nama: 'Gelanggang Real-Time', icon: '🏟️', img: '/screenshots/gelanggang.png', desc: 'Antrian tampil, stopwatch, & peserta aktif live.' },
@@ -26,6 +37,7 @@ export default async function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="bg-gradient-to-br from-hijau-tua to-hijau-sedang text-putih-gading">
         <nav className="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
           <span className="font-[family-name:var(--font-cinzel)] font-bold text-xl text-emas-terang">Pasanggiri</span>

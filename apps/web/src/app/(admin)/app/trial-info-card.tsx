@@ -148,28 +148,25 @@ export function TrialInfoCard({
 function DonateModal({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-xl bg-putih-gading p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 text-center">
-          <div className="mb-2 text-4xl">💚</div>
-          <h3 className="font-[family-name:var(--font-cinzel)] text-xl font-bold text-hijau-tua">Dukung Pasanggiri</h3>
+      <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl bg-putih-gading p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 text-center">
+          <h3 className="font-[family-name:var(--font-cinzel)] text-lg font-bold text-hijau-tua">💚 Dukung Pasanggiri</h3>
+          <p className="mt-1 text-xs text-coklat">Scan QRIS untuk berdonasi</p>
         </div>
 
-        <div className="mb-5 space-y-3 rounded-lg bg-emas/5 p-4 text-sm text-coklat">
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 flex-shrink-0 text-base">ℹ️</span>
-            <p className="font-bold text-hijau-tua">PENTING UNTUK DIKETAHUI</p>
-          </div>
+        <div className="mb-3 flex justify-center">
+          <img
+            src="/screenshots/QRIS kkmht.png"
+            alt="QRIS Donasi"
+            className="rounded-lg border-2 border-emas/30 shadow-sm"
+            style={{ maxWidth: '200px', width: '100%' }}
+          />
+        </div>
 
-          <p>Setiap akun yang dibuat hanya aktif selama <b>7 hari</b>.</p>
-
-          <p>
-            Jika tidak melakukan donasi, akun akan <b>tersuspend</b> setelah melewati masa trial.
-          </p>
-
-          <p>
-            Kebijakan ini bertujuan mengurangi beban server sehingga event pengguna lain juga bisa berjalan dengan lancar.
-            Dengan berdonasi, Anda membantu layanan ini tetap tersedia untuk semua.
-          </p>
+        <div className="mb-3 rounded-lg bg-emas/5 p-3 text-xs text-coklat space-y-1">
+          <p>✓ Biaya server & infrastruktur</p>
+          <p>✓ Pengembangan fitur baru</p>
+          <p>✓ Layanan gratis untuk event lain</p>
         </div>
 
         <div className="flex flex-col gap-2">
@@ -177,15 +174,15 @@ function DonateModal({ onClose }: { onClose: () => void }) {
             href="https://lynk.id/kkmht/n7nd13n58nx2"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 rounded-lg bg-hijau-tua px-6 py-3 text-center font-bold text-emas-terang transition hover:brightness-110"
+            className="text-center text-xs text-hijau-tua hover:underline"
           >
-            💚 Lanjut ke Halaman Donasi
+            Atau buka halaman donasi →
           </a>
           <button
             onClick={onClose}
-            className="rounded-lg border-2 border-gray-200 px-4 py-2.5 text-sm font-bold text-coklat transition hover:bg-gray-50"
+            className="rounded-lg border-2 border-gray-200 px-4 py-2 text-sm font-bold text-coklat transition hover:bg-gray-50"
           >
-            Batal
+            Tutup
           </button>
         </div>
       </div>
