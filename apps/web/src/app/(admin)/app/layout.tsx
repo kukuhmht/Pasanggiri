@@ -1,26 +1,21 @@
-import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from './_components/admin-sidebar'
-import { isOrgActive, OrgContext } from '@/lib/auth'
+import { getAuthContext, isOrgActive } from '@/lib/auth'
 import { TrialInfoCard } from './trial-info-card'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createServerSupabase()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const ctx = await getAuthContext()
+  if (!ctx) redirect('/login')
 
-  const { data: membership } = await supabase
-    .from('memberships')
-    .select('org_id, organizations(id, nama, status, berlaku_hingga, slug)')
-    .eq('user_id', user.id)
-    .single()
-
-  const org = (membership?.organizations as unknown) as OrgContext | null
-
+  const { user, org } = ctx
   const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim())
   const isSuperAdmin = superAdminEmails.includes(user.email || '')
-  
   const active = isOrgActive(org)
+
+  const today = new Date().toISOString().split('T')[0]
+  const sisaHari = org?.berlaku_hingga
+    ? Math.max(0, Math.ceil((new Date(org.berlaku_hingga).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0
 
   return (
     <div className="min-h-screen">
@@ -29,8 +24,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="max-w-2xl w-full">
             <TrialInfoCard 
               status={org?.status || 'trial'} 
-              sisaHari={0} 
-              totalHari={0} 
+              sisaHari={sisaHari} 
+              totalHari={7} 
               berlakuHingga={org?.berlaku_hingga || null} 
             />
           </div>
