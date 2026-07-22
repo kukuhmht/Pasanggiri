@@ -15,12 +15,12 @@ const FEATURES = [
   { key: 'pin', title: 'PIN', emoji: '🔐' },
 ]
 
-export function AdminSidebar({ orgNama, isSuperAdmin }: { orgNama: string; isSuperAdmin: boolean }) {
+export function AdminSidebar({ orgNama, isSuperAdmin, isActive }: { orgNama: string; isSuperAdmin: boolean; isActive: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const { events, loading, showModal, setShowModal, pickEventAndNavigate, selectEvent } = useEventPicker()
 
-  const isActive = (href: string) => {
+  const isActiveLink = (href: string) => {
     if (href === '/app') return pathname === '/app'
     return pathname === href || pathname.startsWith(href + '/')
   }
@@ -29,6 +29,13 @@ export function AdminSidebar({ orgNama, isSuperAdmin }: { orgNama: string; isSup
     setIsOpen(false)
     pickEventAndNavigate(featurePath(key))
   }
+
+  const linkClass = (href: string) =>
+    `flex items-center gap-3 px-3 py-2.5 xl:py-3 rounded-lg text-sm xl:text-base 2xl:text-lg font-semibold transition ${
+      isActiveLink(href) ? 'bg-emas/20 text-emas-terang' : 'hover:bg-white/10'
+    }`
+
+  const disabledClass = 'opacity-50 cursor-not-allowed pointer-events-none'
 
   return (
     <>
@@ -51,15 +58,15 @@ export function AdminSidebar({ orgNama, isSuperAdmin }: { orgNama: string; isSup
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           <Link href="/app" onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 xl:py-3 rounded-lg text-sm xl:text-base 2xl:text-lg font-semibold transition ${isActive('/app') ? 'bg-emas/20 text-emas-terang' : 'hover:bg-white/10'}`}>
+            className={linkClass('/app') + (isActive ? '' : disabledClass)}>
             <span className="text-xl">🏠</span> Dashboard
           </Link>
           <Link href="/app/events" onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 xl:py-3 rounded-lg text-sm xl:text-base 2xl:text-lg font-semibold transition ${isActive('/app/events') ? 'bg-emas/20 text-emas-terang' : 'hover:bg-white/10'}`}>
+            className={linkClass('/app/events') + (isActive ? '' : disabledClass)}>
             <span className="text-xl">📋</span> Events
           </Link>
           <Link href="/app/settings" onClick={() => setIsOpen(false)}
-            className={`flex items-center gap-3 px-3 py-2.5 xl:py-3 rounded-lg text-sm xl:text-base 2xl:text-lg font-semibold transition ${isActive('/app/settings') ? 'bg-emas/20 text-emas-terang' : 'hover:bg-white/10'}`}>
+            className={linkClass('/app/settings') + (isActive ? '' : disabledClass)}>
             <span className="text-xl">⚙️</span> Pengaturan
           </Link>
 
@@ -68,7 +75,7 @@ export function AdminSidebar({ orgNama, isSuperAdmin }: { orgNama: string; isSup
             <div className="space-y-1">
               {FEATURES.map(f => (
                 <button key={f.key} onClick={() => handleClick(f.key)}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 xl:py-3 rounded-lg text-sm xl:text-base 2xl:text-lg font-medium hover:bg-white/10 transition text-left">
+                  className={`flex items-center gap-3 w-full px-3 py-2.5 xl:py-3 rounded-lg text-sm xl:text-base 2xl:text-lg font-medium hover:bg-white/10 transition text-left ${isActive ? '' : disabledClass}`}>
                   <span className="text-xl">{f.emoji}</span> {f.title}
                 </button>
               ))}

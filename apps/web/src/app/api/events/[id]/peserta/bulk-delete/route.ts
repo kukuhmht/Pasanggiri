@@ -1,10 +1,11 @@
-import { getAuthContext, getAdminClient } from '@/lib/auth'
+import { getAuthContext, getAdminClient, isOrgActive } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
 // POST /api/events/:id/peserta/bulk-delete
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await getAuthContext()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isOrgActive(ctx.org)) return NextResponse.json({ error: 'Akun Anda telah melewati masa aktif.' }, { status: 403 })
 
   const { id: eventId } = await params
   const { ids } = await request.json()

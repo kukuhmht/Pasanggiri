@@ -1,9 +1,11 @@
-import { getAuthContext, getAdminClient } from '@/lib/auth'
+import { getAuthContext, getAdminClient, isOrgActive } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
 // PATCH /api/events/:id/peserta/:pid
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; pid: string }> }) {
   const ctx = await getAuthContext()
+  if (ctx && !isOrgActive(ctx.org)) return NextResponse.json({ error: 'Akun Anda telah melewati masa aktif.' }, { status: 403 })
+  
   const body = await request.json()
   let { actor_name, actor_phone, ...updates } = body
 
@@ -49,6 +51,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 // DELETE /api/events/:id/peserta/:pid
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string; pid: string }> }) {
   const ctx = await getAuthContext()
+  if (ctx && !isOrgActive(ctx.org)) return NextResponse.json({ error: 'Akun Anda telah melewati masa aktif.' }, { status: 403 })
+  
   let actor_name, actor_phone
   try {
     const body = await request.json()
