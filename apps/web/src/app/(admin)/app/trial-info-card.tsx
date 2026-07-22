@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { isInGracePeriod, gracePeriodDaysLeft } from '@/lib/auth'
+import { isInGracePeriod, gracePeriodDaysLeft } from '@/lib/org-status'
 
 export function TrialInfoCard({
   status,
@@ -39,7 +39,7 @@ export function TrialInfoCard({
     window.location.href = '/'
   }
 
-  if (status === 'trial') {
+  if (status === 'trial' && !isInGracePeriod({ berlaku_hingga: berlakuHingga })) {
     const progress = totalHari > 0 ? ((totalHari - sisaHari) / totalHari) * 100 : 0
 
     return (
