@@ -22,6 +22,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   
   const active = isOrgActive(org)
 
+  const today = new Date().toISOString().split('T')[0]
+  const sisaHari = org?.berlaku_hingga
+    ? Math.max(0, Math.ceil((new Date(org.berlaku_hingga).getTime() - new Date(today).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0
+
   return (
     <div className="min-h-screen">
       {!active ? (
@@ -29,8 +34,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="max-w-2xl w-full">
             <TrialInfoCard 
               status={org?.status || 'trial'} 
-              sisaHari={0} 
-              totalHari={0} 
+              sisaHari={sisaHari} 
+              totalHari={7} 
               berlakuHingga={org?.berlaku_hingga || null} 
             />
           </div>
