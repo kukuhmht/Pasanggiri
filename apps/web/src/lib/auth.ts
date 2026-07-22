@@ -1,6 +1,14 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 
+export type OrgContext = {
+  id: string
+  nama: string
+  status: string
+  slug: string
+  berlaku_hingga: string | null
+}
+
 /**
  * Get current user's org membership. Returns null if not authenticated or no org.
  */
@@ -17,11 +25,19 @@ export async function getAuthContext() {
 
   if (!membership) return null
 
-  const org = membership.organizations as unknown as {
-    id: string; nama: string; status: string; slug: string; berlaku_hingga: string | null
-  }
+  const org = membership.organizations as unknown as OrgContext
 
   return { user, org, orgId: membership.org_id, role: membership.role }
+}
+
+/**
+ * Check if org is active (not expired and status is trial/active).
+ */
+export function isOrgActive(org: { status: string; berlaku_hingga: string | null } | null | undefined): boolean {
+  if (!org) return false
+  const today = new Date().toISOString().split('T')[0]
+  const isExpired = !!(org.berlaku_hingga && org.berlaku_hingga < today)
+  return !isExpired && (org.status === 'active' || org.status === 'trial')
 }
 
 /**

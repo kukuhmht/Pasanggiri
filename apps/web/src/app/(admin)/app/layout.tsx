@@ -1,6 +1,8 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from './_components/admin-sidebar'
+import { isOrgActive, OrgContext } from '@/lib/auth'
+import { TrialInfoCard } from './trial-info-card'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabase()
@@ -9,23 +11,40 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { data: membership } = await supabase
     .from('memberships')
-    .select('org_id, organizations(*)')
+    .select('org_id, organizations(id, nama, status, berlaku_hingga, slug)')
     .eq('user_id', user.id)
     .single()
 
-  const org = (membership?.organizations as unknown) as { id: string; nama: string } | null
+  const org = (membership?.organizations as unknown) as OrgContext | null
 
   const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim())
   const isSuperAdmin = superAdminEmails.includes(user.email || '')
+  
+  const active = isOrgActive(org)
 
   return (
     <div className="min-h-screen">
-      <AdminSidebar orgNama={org?.nama || 'Pasanggiri'} isSuperAdmin={isSuperAdmin} />
-      <main className="lg:pl-64 min-h-screen">
-        <div className="p-6 lg:p-10 xl:p-12 2xl:p-16 text-base xl:text-lg 2xl:text-xl text-coklat">
-          {children}
+      {!active ? (
+        <div className="flex items-center justify-center min-h-screen bg-krem p-6">
+          <div className="max-w-2xl w-full">
+            <TrialInfoCard 
+              status={org?.status || 'trial'} 
+              sisaHari={0} 
+              totalHari={0} 
+              berlakuHingga={org?.berlaku_hingga || null} 
+            />
+          </div>
         </div>
-      </main>
+      ) : (
+        <>
+          <AdminSidebar orgNama={org?.nama || 'Pasanggiri'} isSuperAdmin={isSuperAdmin} isActive={active} />
+          <main className="lg:pl-64 min-h-screen">
+            <div className="p-6 lg:p-10 xl:p-12 2xl:p-16 text-base xl:text-lg 2xl:text-xl text-coklat">
+              {children}
+            </div>
+          </main>
+        </>
+      )}
     </div>
   )
 }

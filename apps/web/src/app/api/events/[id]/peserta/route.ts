@@ -1,7 +1,7 @@
-import { getAuthContext, getAdminClient } from '@/lib/auth'
+import { getAuthContext, getAdminClient, isOrgActive } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
-// GET /api/events/:id/peserta
+// GET /api/events/:id/peserta — public registration/results
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: eventId } = await params
   const db = getAdminClient()
@@ -17,8 +17,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({ data })
 }
 
-// POST /api/events/:id/peserta — create peserta + auto nomor urut
+// POST /api/events/:id/peserta — public self-registration + admin creation
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  // Check auth context for admin users, but allow public registration
+  const ctx = await getAuthContext()
+  if (ctx && !isOrgActive(ctx.org)) return NextResponse.json({ error: 'Akun Anda telah melewati masa aktif.' }, { status: 403 })
+
   const { id: eventId } = await params
   const body = await request.json()
   const { kategori, golongan, kontingen_id, anggota, actor_name, actor_phone } = body

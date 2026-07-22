@@ -1,10 +1,11 @@
-import { getAuthContext, getAdminClient } from '@/lib/auth'
+import { getAuthContext, getAdminClient, isOrgActive } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
 // PATCH /api/events/:id/kontingen/:kid
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; kid: string }> }) {
   const ctx = await getAuthContext()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isOrgActive(ctx.org)) return NextResponse.json({ error: 'Akun Anda telah melewati masa aktif.' }, { status: 403 })
 
   const { kid } = await params
   const { nama, kode } = await request.json()
@@ -28,6 +29,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string; kid: string }> }) {
   const ctx = await getAuthContext()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isOrgActive(ctx.org)) return NextResponse.json({ error: 'Akun Anda telah melewati masa aktif.' }, { status: 403 })
 
   const { kid } = await params
   const db = getAdminClient()
