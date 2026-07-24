@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { LogoutButton } from '../logout-button'
 import { useEventPicker, featurePath } from './use-event-picker'
 import { EventPickerModal } from './event-picker-modal'
+import { PdfViewerModal } from './pdf-viewer-modal'
 
 const FEATURES = [
   { key: 'peserta', title: 'Peserta', emoji: '🥋' },
@@ -17,6 +18,7 @@ const FEATURES = [
 
 export function AdminSidebar({ orgNama, isSuperAdmin, isActive }: { orgNama: string; isSuperAdmin: boolean; isActive: boolean }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [showPdfModal, setShowPdfModal] = useState(false)
   const pathname = usePathname()
   const { events, loading, showModal, setShowModal, pickEventAndNavigate, selectEvent } = useEventPicker()
 
@@ -69,6 +71,12 @@ export function AdminSidebar({ orgNama, isSuperAdmin, isActive }: { orgNama: str
             className={linkClass('/app/settings') + (isActive ? '' : disabledClass)}>
             <span className="text-xl">⚙️</span> Pengaturan
           </Link>
+          <button
+            onClick={() => { setIsOpen(false); setShowPdfModal(true) }}
+            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-white/10 xl:py-3 xl:text-base 2xl:text-lg ${isActive ? '' : disabledClass}`}
+          >
+            <span className="text-xl">📖</span> Peraturan
+          </button>
 
           <div className="pt-6 mt-4 border-t border-white/10">
             <p className="text-[10px] xl:text-xs uppercase tracking-widest opacity-60 px-3 mb-2 font-bold">Shortcut Fitur</p>
@@ -104,6 +112,12 @@ export function AdminSidebar({ orgNama, isSuperAdmin, isActive }: { orgNama: str
           loading={loading}
           onSelect={selectEvent}
           onClose={() => setShowModal(false)}
+        />
+      )}
+      {showPdfModal && (
+        <PdfViewerModal
+          pdfUrl="/file/peraturan-pasanggiri.pdf"
+          onClose={() => setShowPdfModal(false)}
         />
       )}
     </>
