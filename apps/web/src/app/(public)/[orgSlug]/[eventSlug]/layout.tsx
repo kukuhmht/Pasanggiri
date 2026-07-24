@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { getAdminClient } from '@/lib/auth'
+import { getAdminClient, getAuthContext } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { DonateFloatingButton, DonateFooter } from '../../donate-widget'
@@ -49,6 +49,7 @@ export default async function PublicEventLayout({
   const result = await resolvePublicEvent(orgSlug, eventSlug)
   if (!result) notFound()
   const { org, event } = result
+  const ctx = await getAuthContext()
 
   const basePath = `/${orgSlug}/${eventSlug}`
 
@@ -56,6 +57,21 @@ export default async function PublicEventLayout({
     <div className="min-h-screen">
       {/* Header */}
       <header className="bg-gradient-to-br from-hijau-tua to-hijau-sedang text-putih-gading">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
+          <Link href="/" className="flex items-center gap-2 text-sm font-bold text-emas-terang hover:brightness-110">
+            <img src="/icons/icon-192.png" alt="Pasanggiri" className="h-8 w-8 rounded-full" />
+            <span>Pasanggiri</span>
+          </Link>
+          {ctx ? (
+            <Link href="/app" className="rounded-lg bg-emas px-4 py-2 text-sm font-bold text-hijau-tua hover:brightness-110">
+              Dashboard
+            </Link>
+          ) : (
+            <Link href="/login" className="rounded-lg border-2 border-emas-terang px-4 py-2 text-sm font-bold text-emas-terang hover:bg-emas-terang/10">
+              Masuk
+            </Link>
+          )}
+        </div>
         <div className="mx-auto max-w-4xl px-6 py-5 text-center">
           <h1 className="font-[family-name:var(--font-cinzel)] text-2xl font-bold text-emas-terang">
             {event.nama}

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useEventPicker, featurePath } from './_components/use-event-picker'
 import { EventPickerModal } from './_components/event-picker-modal'
+import { PdfViewerModal } from './_components/pdf-viewer-modal'
 
 const FEATURES = [
   { key: 'peserta', title: 'Peserta', desc: 'Lihat semua peserta', emoji: '🥋' },
@@ -16,6 +17,7 @@ const FEATURES = [
 export function DashboardContent({ email, orgNama }: { email: string; orgNama: string }) {
   const { events, loading, showModal, setShowModal, pickEventAndNavigate, selectEvent } = useEventPicker()
   const [publicLink, setPublicLink] = useState<string | null>(null)
+  const [showPdfModal, setShowPdfModal] = useState(false)
 
   // Function to fetch and set public link for an event
   async function fetchAndSetPublicLink(eventId: string) {
@@ -98,6 +100,21 @@ export function DashboardContent({ email, orgNama }: { email: string; orgNama: s
           <p className="mt-1 text-sm text-coklat">Profil & password</p>
         </Link>
       </div>
+
+      <div className="rounded-xl border-l-4 border-hijau-sedang bg-putih-gading p-6 shadow">
+        <h2 className="font-[family-name:var(--font-cinzel)] text-xl font-semibold text-hijau-tua mb-3">
+          📖 Buku Peraturan Pasanggiri Asad
+        </h2>
+        <p className="text-sm text-coklat mb-4">
+          Panduan lengkap peraturan lomba dan formulir penilaian juri.
+        </p>
+        <button
+          onClick={() => setShowPdfModal(true)}
+          className="rounded-lg bg-hijau-tua px-6 py-3 text-sm font-bold text-emas-terang hover:brightness-110"
+        >
+          📄 Lihat Peraturan
+        </button>
+      </div>
       
       {showModal && (
         <EventPickerModal
@@ -105,6 +122,13 @@ export function DashboardContent({ email, orgNama }: { email: string; orgNama: s
           loading={loading}
           onSelect={selectEvent}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {showPdfModal && (
+        <PdfViewerModal
+          pdfUrl="/file/peraturan-pasanggiri.pdf"
+          onClose={() => setShowPdfModal(false)}
         />
       )}
     </div>

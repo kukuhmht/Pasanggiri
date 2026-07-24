@@ -1,4 +1,5 @@
 import { getAuthContext, getAdminClient, isOrgActive } from '@/lib/auth'
+import { triggerGelanggangUpdate } from '@/lib/pusher/server'
 import { NextResponse } from 'next/server'
 
 // GET /api/events/:id/gelanggang
@@ -39,5 +40,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await triggerGelanggangUpdate(eventId, {
+    gelanggang_id: data.id,
+    gelanggang_nama: data.nama,
+    peserta_aktif: null,
+    antrian: [],
+  })
+
   return NextResponse.json({ data }, { status: 201 })
 }

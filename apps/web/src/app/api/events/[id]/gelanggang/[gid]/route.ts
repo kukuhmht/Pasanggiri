@@ -53,9 +53,15 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const ctx = await getAuthContext()
   if (!ctx) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!isOrgActive(ctx.org)) return NextResponse.json({ error: 'Akun Anda telah melewati masa aktif.' }, { status: 403 })
-  const { gid } = await params
+  const { id: eventId, gid } = await params
   const db = getAdminClient()
   const { error } = await db.from('gelanggang').delete().eq('id', gid)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await triggerGelanggangUpdate(eventId, {
+    gelanggang_id: gid,
+    deleted: true,
+  })
+
   return NextResponse.json({ success: true }, { status: 200 })
 }

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getAdminClient } from '@/lib/auth'
 import { DonateCTASection, DonateFloatingButton } from './(public)/donate-widget'
+import { PublicEventList } from './public-event-list'
 
 export const dynamic = 'force-dynamic'
 
@@ -77,6 +78,13 @@ export default async function LandingPage() {
             <div className="text-sm text-coklat">Penilaian Selesai</div>
           </div>
         </div>
+
+        <section>
+          <h2 className="font-[family-name:var(--font-cinzel)] text-2xl font-bold text-hijau-tua text-center mb-10">
+            Event Pasanggiri Terbuka
+          </h2>
+          <PublicEventList />
+        </section>
 
         <section>
           <h2 className="font-[family-name:var(--font-cinzel)] text-2xl font-bold text-hijau-tua text-center mb-10">Fitur Utama</h2>
