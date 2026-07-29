@@ -21,6 +21,7 @@ type AuditLog = { id: string; action: string; entity_id: string; old_data: Recor
 export default function DaftarPage() {
   const { orgSlug, eventSlug } = useParams()
   const [eventId, setEventId] = useState('')
+  const [eventStatus, setEventStatus] = useState('')
   const [kontingen, setKontingen] = useState<Kontingen[]>([])
   const [pesertaList, setPesertaList] = useState<Peserta[]>([])
   const [deletedList, setDeletedList] = useState<Peserta[]>([])
@@ -57,6 +58,7 @@ export default function DaftarPage() {
     if (!res.ok) { setLoading(false); return }
     const { event } = await res.json()
     setEventId(event.id)
+    setEventStatus(event.status)
     await loadData(event.id)
     setLoading(false)
   }
@@ -280,6 +282,11 @@ export default function DaftarPage() {
           </h2>
           <p className="text-sm text-coklat mb-6">Isi form di bawah untuk mendaftar sebagai peserta.</p>
 
+          {eventStatus === 'Sudah Selesai' ? (
+            <div className="rounded-lg bg-gray-100 p-4 text-sm font-semibold text-gray-700">
+              Pendaftaran telah ditutup. Event sudah selesai.
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-semibold text-coklat">Kategori</label>
@@ -339,6 +346,7 @@ export default function DaftarPage() {
               {saving && <Spinner />} {saving ? 'Mendaftar...' : 'Daftar Peserta'}
             </button>
           </form>
+          )}
         </div>
       )}
 
@@ -395,16 +403,18 @@ export default function DaftarPage() {
                     </div>
                     <div className="text-[10px] text-gray-400">{p.kontingen?.nama || '-'}</div>
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => requestEdit(p)}
-                      className="rounded bg-emas/20 px-2 py-1 text-[10px] font-bold text-emas hover:bg-emas/30">
-                      Edit
-                    </button>
-                    <button onClick={() => requestDelete(p)}
-                      className="rounded bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-100">
-                      Hapus
-                    </button>
-                  </div>
+                  {eventStatus !== 'Sudah Selesai' && (
+                    <div className="flex gap-1 flex-shrink-0">
+                      <button onClick={() => requestEdit(p)}
+                        className="rounded bg-emas/20 px-2 py-1 text-[10px] font-bold text-emas hover:bg-emas/30">
+                        Edit
+                      </button>
+                      <button onClick={() => requestDelete(p)}
+                        className="rounded bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-100">
+                        Hapus
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -438,10 +448,12 @@ export default function DaftarPage() {
                     </div>
                     <div className="text-[10px] text-gray-400">{p.kontingen?.nama || '-'}</div>
                   </div>
-                  <button onClick={() => requestRestore(p)}
-                    className="rounded bg-green-50 px-3 py-1.5 text-[10px] font-bold text-green-700 hover:bg-green-100">
-                    Restore
-                  </button>
+                  {eventStatus !== 'Sudah Selesai' && (
+                    <button onClick={() => requestRestore(p)}
+                      className="rounded bg-green-50 px-3 py-1.5 text-[10px] font-bold text-green-700 hover:bg-green-100">
+                      Restore
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

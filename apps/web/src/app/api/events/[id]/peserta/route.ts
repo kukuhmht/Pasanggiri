@@ -1,4 +1,5 @@
 import { getAuthContext, getAdminClient, isOrgActive } from '@/lib/auth'
+import { getEventStatus } from '@/lib/event-status'
 import { NextResponse } from 'next/server'
 
 // GET /api/events/:id/peserta — public registration/results
@@ -32,6 +33,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const db = getAdminClient()
+
+  if (!ctx && await getEventStatus(db, eventId) === 'Sudah Selesai') {
+    return NextResponse.json({ error: 'Pendaftaran telah ditutup. Event sudah selesai.' }, { status: 403 })
+  }
 
   // Get event prefix & kontingen kode for nomor urut
   const [{ data: event }, { data: kont }] = await Promise.all([

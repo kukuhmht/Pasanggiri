@@ -1,14 +1,24 @@
-import { getAdminClient } from '@/lib/auth'
+import { getAdminClient, getAuthContext } from '@/lib/auth'
+import { getEventStatus } from '@/lib/event-status'
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; pid: string }> }) {
-  const { actor_name, actor_phone } = await request.json()
-  if (!actor_name || !actor_phone || !actor_phone.startsWith('62')) {
+  const ctx = await getAuthContext()
+  let { actor_name, actor_phone } = await request.json()
+
+  if (ctx) {
+    actor_name = ctx.user.email || 'Admin'
+    actor_phone = '-'
+  } else if (!actor_name || !actor_phone || !actor_phone.startsWith('62')) {
     return NextResponse.json({ error: 'Nama dan WhatsApp (awalan 62) wajib diisi.' }, { status: 400 })
   }
 
   const { id: eventId, pid } = await params
   const db = getAdminClient()
+
+  if (!ctx && await getEventStatus(db, eventId) === 'Sudah Selesai') {
+    return NextResponse.json({ error: 'Perubahan peserta telah ditutup. Event sudah selesai.' }, { status: 403 })
+  }
 
   const { data: oldData, error: fetchError } = await db.from('peserta').select('*').eq('id', pid).single()
   if (fetchError || !oldData) return NextResponse.json({ error: 'Peserta tidak ditemukan' }, { status: 404 })

@@ -1,4 +1,5 @@
 import { getAuthContext, getAdminClient, isOrgActive } from '@/lib/auth'
+import { getEventStatus } from '@/lib/event-status'
 import { NextResponse } from 'next/server'
 
 // PATCH /api/events/:id/peserta/:pid
@@ -19,6 +20,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const { id: eventId, pid } = await params
   const db = getAdminClient()
+
+  if (!ctx && await getEventStatus(db, eventId) === 'Sudah Selesai') {
+    return NextResponse.json({ error: 'Perubahan peserta telah ditutup. Event sudah selesai.' }, { status: 403 })
+  }
 
   // 1. Get current data for audit
   const { data: oldData, error: fetchError } = await db.from('peserta').select('*').eq('id', pid).single()
@@ -71,6 +76,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   const { id: eventId, pid } = await params
   const db = getAdminClient()
+
+  if (!ctx && await getEventStatus(db, eventId) === 'Sudah Selesai') {
+    return NextResponse.json({ error: 'Perubahan peserta telah ditutup. Event sudah selesai.' }, { status: 403 })
+  }
 
   // 1. Check for existing penilaian
   const { count, error: countError } = await db.from('penilaian').select('*', { count: 'exact', head: true }).eq('peserta_id', pid)
