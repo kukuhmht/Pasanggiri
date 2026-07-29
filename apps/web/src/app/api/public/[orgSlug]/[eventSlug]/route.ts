@@ -1,4 +1,5 @@
 import { getAdminClient } from '@/lib/auth'
+import { getEventStatus } from '@/lib/event-status'
 import { NextResponse } from 'next/server'
 
 // GET /api/public/:orgSlug/:eventSlug — resolve event by slugs (public)
@@ -26,5 +27,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ org
   if (!event) return NextResponse.json({ error: 'Event tidak ditemukan.' }, { status: 404 })
   if (!event.is_public) return NextResponse.json({ error: 'Event ini tidak publik.' }, { status: 403 })
 
-  return NextResponse.json({ org, event })
+  const status = await getEventStatus(db, event.id)
+  return NextResponse.json({ org, event: { ...event, status } })
 }
