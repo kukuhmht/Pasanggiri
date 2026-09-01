@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from './_components/admin-sidebar'
+import { NoOrganizationPage } from './_components/no-organization-page'
 import { getAuthContext, isOrgActive } from '@/lib/auth'
 import { TrialInfoCard } from './trial-info-card'
 
@@ -8,6 +9,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!ctx) redirect('/login')
 
   const { user, org } = ctx
+
+  // Authenticated but no organization — show error page instead of redirect loop
+  if (!org) return <NoOrganizationPage email={user.email || ''} />
   const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim())
   const isSuperAdmin = superAdminEmails.includes(user.email || '')
   const active = isOrgActive(org)

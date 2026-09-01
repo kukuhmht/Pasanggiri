@@ -2,6 +2,12 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import {
+  isNetworkError,
+  NETWORK_ERROR_MESSAGE,
+  PARTIAL_SIGNUP_MESSAGE,
+  logNetworkError,
+} from '@/lib/errors/network'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -33,45 +39,67 @@ export default function RegisterPage() {
     }
 
     setLoading(true)
-    const supabase = createClient()
+    let signUpSucceeded = false
 
-    // 1. Sign up user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: { org_nama: form.nama.trim() }
+    try {
+      const supabase = createClient()
+
+      // 1. Sign up user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: { org_nama: form.nama.trim() }
+        }
+      })
+
+      if (authError) {
+        if (isNetworkError(authError)) {
+          logNetworkError('register.signUp', authError)
+          setError(NETWORK_ERROR_MESSAGE)
+        } else {
+          setError(authError.message)
+        }
+        return
       }
-    })
 
-    if (authError) {
-      setError(authError.message)
+      if (!authData.user) {
+        setError('Pendaftaran gagal. Coba lagi.')
+        return
+      }
+
+      signUpSucceeded = true
+
+      // 2. Create organization (via API route to ensure server-side logic)
+      const res = await fetch('/api/org/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nama: form.nama.trim() })
+      })
+      const result = await res.json()
+
+      if (!res.ok) {
+        setError(result.error || 'Gagal membuat organisasi.')
+        return
+      }
+
+      router.push('/app')
+      router.refresh()
+    } catch (err) {
+      if (isNetworkError(err)) {
+        if (signUpSucceeded) {
+          logNetworkError('register.orgCreate.partial', err)
+          setError(PARTIAL_SIGNUP_MESSAGE)
+        } else {
+          logNetworkError('register.signUp', err)
+          setError(NETWORK_ERROR_MESSAGE)
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan. Coba lagi.')
+      }
+    } finally {
       setLoading(false)
-      return
     }
-
-    if (!authData.user) {
-      setError('Pendaftaran gagal. Coba lagi.')
-      setLoading(false)
-      return
-    }
-
-    // 2. Create organization (via API route to ensure server-side logic)
-    const res = await fetch('/api/org/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nama: form.nama.trim() })
-    })
-    const result = await res.json()
-
-    if (!res.ok) {
-      setError(result.error || 'Gagal membuat organisasi.')
-      setLoading(false)
-      return
-    }
-
-    router.push('/app')
-    router.refresh()
   }
 
   return (

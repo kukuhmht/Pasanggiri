@@ -1,4 +1,6 @@
 import { getAdminClient } from '@/lib/auth'
+import { deriveEventStatus } from '@/lib/event-status'
+import { isOrgExpired } from '@/lib/org-status'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -12,7 +14,7 @@ export async function GET(request: Request) {
   // Fetch ALL public events with org info (max 500 to prevent abuse)
   const { data, error } = await db
     .from('events')
-    .select('id, nama, subjudul, tahun, slug, organizations(nama, slug)')
+    .select('id, nama, subjudul, tahun, slug, organizations(nama, slug, status, berlaku_hingga)')
     .eq('is_public', true)
     .order('created_at', { ascending: false })
     .limit(500)
@@ -43,10 +45,13 @@ export async function GET(request: Request) {
     const hasAntrian = gelanggangs.some(gelanggang => (gelanggang.antrian || []).length > 0)
     const hasPenilaian = eventsWithPenilaian.has(event.id)
 
-    let status = 'Belum Dilaksanakan'
-    if (hasPesertaAktif) status = 'Sedang Berlangsung'
-    else if (hasGelanggang && hasAntrian) status = 'Akan Dilaksanakan'
-    else if (hasGelanggang && hasPenilaian) status = 'Sudah Selesai'
+    const status = deriveEventStatus({
+      hasGelanggang,
+      hasPesertaAktif,
+      hasAntrian,
+      hasPenilaian,
+      orgExpired: isOrgExpired(event.organizations as any),
+    })
 
     return { ...event, status }
   })

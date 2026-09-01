@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { isNetworkError, NETWORK_ERROR_MESSAGE, logNetworkError } from '@/lib/errors/network'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -20,19 +21,34 @@ function LoginForm() {
     setError('')
     setLoading(true)
 
-    const supabase = createClient()
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    try {
+      const supabase = createClient()
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (authError) {
-      setError(authError.message === 'Invalid login credentials'
-        ? 'Email atau password salah.'
-        : authError.message)
+      if (authError) {
+        if (isNetworkError(authError)) {
+          logNetworkError('login.signIn', authError)
+          setError(NETWORK_ERROR_MESSAGE)
+        } else if (authError.message === 'Invalid login credentials') {
+          setError('Email atau password salah.')
+        } else {
+          setError(authError.message)
+        }
+        setLoading(false)
+        return
+      }
+
+      router.push(redirectTo)
+      router.refresh()
+    } catch (err) {
+      if (isNetworkError(err)) {
+        logNetworkError('login.signIn', err)
+        setError(NETWORK_ERROR_MESSAGE)
+      } else {
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan. Coba lagi.')
+      }
       setLoading(false)
-      return
     }
-
-    router.push(redirectTo)
-    router.refresh()
   }
 
   return (

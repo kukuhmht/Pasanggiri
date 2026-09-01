@@ -16,6 +16,17 @@ export default async function SuperAdminPage() {
 
   // Fetch all organizations using admin client (bypass RLS)
   const db = getAdminClient()
+
+  // Reconcile stale records: any trial/active org past its berlaku_hingga is
+  // immediately expired (same condition as the cron), so the list reflects the
+  // effective status and historical records get fixed in place.
+  const today = new Date().toISOString().split('T')[0]
+  await db
+    .from('organizations')
+    .update({ status: 'expired' })
+    .in('status', ['trial', 'active'])
+    .lt('berlaku_hingga', today)
+
   const { data: orgs } = await db
     .from('organizations')
     .select('*')
