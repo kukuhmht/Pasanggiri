@@ -213,6 +213,9 @@ function DonateModal({ onClose }: { onClose: () => void }) {
           <a href="https://lynk.id/kkmht/n7nd13n58nx2" target="_blank" rel="noopener noreferrer" className="text-center text-xs text-hijau-tua hover:underline">
             Atau buka halaman donasi →
           </a>
+          <a href="https://wasap.at/dkyu8m" target="_blank" rel="noopener noreferrer" className="rounded-lg bg-green-600 px-4 py-2 text-center text-sm font-bold text-white transition hover:bg-green-700">
+            ✅ Sudah Donasi? Konfirmasi via WhatsApp
+          </a>
           <button onClick={onClose} className="rounded-lg border-2 border-gray-200 px-4 py-2 text-sm font-bold text-coklat transition hover:bg-gray-50">
             Tutup
           </button>

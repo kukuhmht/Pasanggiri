@@ -2,8 +2,8 @@ import { getAdminClient } from '@/lib/auth'
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-// POST /api/cron/send-expiry-emails
-export async function POST(request: Request) {
+// Core logic shared by GET (Vercel Cron) and POST invocations.
+async function handleSendExpiryEmails(request: Request) {
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -17,11 +17,10 @@ export async function POST(request: Request) {
 
   const today = new Date().toISOString().split('T')[0]
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  const gracePeriodEndTomorrow = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  const results = { reminderSent: 0, expiredSent: 0, finalWarningSent: 0, errors: [] as Array<{ org: string; email: string; error: string }> }
+  const results = { reminderSent: 0, expiredSent: 0, errors: [] as Array<{ org: string; email: string; error: string }> }
 
-  const processOrgs = async (date: string, type: 'reminder' | 'expired' | 'finalWarning') => {
+  const processOrgs = async (date: string, type: 'reminder' | 'expired') => {
     const { data: orgs } = await db
       .from('organizations')
       .select('id, nama, memberships(user_id)')
@@ -38,14 +37,11 @@ export async function POST(request: Request) {
             to: email,
             subject: type === 'reminder'
               ? '[Pasanggiri] Reminder: Akun akan berakhir besok'
-              : type === 'expired'
-                ? '[Pasanggiri] Masa berlaku habis - Grace period 3 hari'
-                : '[Pasanggiri] URGENT: Akun akan tersuspend besok',
+              : '[Pasanggiri] Masa berlaku akun telah berakhir',
             body: emailTemplates[type](org.nama, date),
           })
           if (type === 'reminder') results.reminderSent++
-          else if (type === 'expired') results.expiredSent++
-          else results.finalWarningSent++
+          else results.expiredSent++
         } catch (err) {
           results.errors.push({ org: org.nama, email, error: (err as Error).message })
         }
@@ -55,9 +51,18 @@ export async function POST(request: Request) {
 
   await processOrgs(tomorrow, 'reminder')
   await processOrgs(today, 'expired')
-  await processOrgs(gracePeriodEndTomorrow, 'finalWarning')
 
   return NextResponse.json(results)
+}
+
+// Vercel Cron invokes via GET with Authorization: Bearer <CRON_SECRET>
+export async function GET(request: Request) {
+  return handleSendExpiryEmails(request)
+}
+
+// POST /api/cron/send-expiry-emails
+export async function POST(request: Request) {
+  return handleSendExpiryEmails(request)
 }
 
 async function sendEmail({ to, subject, body }: { to: string; subject: string; body: string }) {
@@ -77,9 +82,8 @@ async function sendEmail({ to, subject, body }: { to: string; subject: string; b
   if (!res.ok) throw new Error(await res.text())
 }
 
-const emailTemplates: Record<'reminder' | 'expired' | 'finalWarning', (orgNama: string, tgl: string) => string> = {
-  reminder: (orgNama, tgl) => `<h2>Reminder: Masa Berlaku Akun Akan Berakhir</h2><p>Halo tim <strong>${orgNama}</strong>,</p><p>Masa berlaku akun Pasanggiri Anda akan berakhir besok (<strong>${tgl}</strong>).</p><p>Anda masih dapat menggunakan layanan selama <strong>3 hari</strong> (grace period) sebelum akun tersuspend.</p><p><a href="https://pasanggiri.web.id/app">Login ke dashboard</a> untuk perpanjang.</p>`,
-  expired: (orgNama, tgl) => `<h2>Masa Berlaku Habis</h2><p>Halo tim <strong>${orgNama}</strong>,</p><p>Masa berlaku akun Pasanggiri Anda telah berakhir pada <strong>${tgl}</strong>.</p><p>Grace period <strong>3 hari</strong> dimulai. Setelah itu, akses akan tersuspend.</p>`,
-  finalWarning: (orgNama, tgl) => `<h2>URGENT: Akun Akan Tersuspend Besok</h2><p>Halo tim <strong>${orgNama}</strong>,</p><p>Grace period akun Anda berakhir <strong>besok</strong>. Akses akan tersuspend dan Anda tidak dapat mengakses dashboard.</p><p><a href="https://pasanggiri.web.id/app">Perpanjang Sekarang</a></p>`,
+const emailTemplates: Record<'reminder' | 'expired', (orgNama: string, tgl: string) => string> = {
+  reminder: (orgNama, tgl) => `<h2>Reminder: Masa Berlaku Akun Akan Berakhir</h2><p>Halo tim <strong>${orgNama}</strong>,</p><p>Masa berlaku akun Pasanggiri Anda akan berakhir besok (<strong>${tgl}</strong>).</p><p>Setelah tanggal tersebut, akun Anda akan otomatis berstatus <strong>expired</strong> dan akses ke dashboard akan dinonaktifkan.</p><p>Silakan <a href="https://pasanggiri.web.id/app">login ke dashboard</a> dan perpanjang sebelum masa berlaku berakhir.</p>`,
+  expired: (orgNama, tgl) => `<h2>Masa Berlaku Akun Telah Berakhir</h2><p>Halo tim <strong>${orgNama}</strong>,</p><p>Masa berlaku akun Pasanggiri Anda telah berakhir pada <strong>${tgl}</strong>.</p><p>Akun Anda kini berstatus <strong>expired</strong> dan akses ke dashboard telah dinonaktifkan.</p><p>Silakan <a href="https://pasanggiri.web.id/app">perpanjang akun Anda</a> untuk mengaktifkannya kembali.</p>`,
 }
 

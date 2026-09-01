@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/send-expiry-emails",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/update-expired-orgs",
+      "schedule": "0 1 * * *"
     }
   ]
 }
